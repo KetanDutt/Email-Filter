@@ -32,10 +32,10 @@ function initClient() {
         // Listen for sign-in state changes.
         gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
         // Handle the initial sign-in state.
-        console.log(gapi.auth2.getAuthInstance());
-        console.log(gapi.auth2.getAuthInstance().currentUser.get());
-        console.log(gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile());
-        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get(), gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getEmail());
+        // console.log(gapi.auth2.getAuthInstance());
+        // console.log(gapi.auth2.getAuthInstance().currentUser.get());
+        // console.log(gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile());
+        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get(), gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile());
         authorizeButton.onclick = handleAuthClick;
         signoutButton.onclick = handleSignoutClick;
     }, function (error) {
@@ -51,7 +51,7 @@ function updateSigninStatus(isSignedIn, ID) {
     if (isSignedIn) {
         Swal.fire({
             title: 'Logged IN',
-            text: "Logged in as " + ID,
+            text: "Logged in as " + ID.getEmail(),
             type: 'success',
             showCancelButton: false,
         }).then(() => {
@@ -128,7 +128,7 @@ function listEmails() {
         let messages = response.result.messages;
         if (messages && messages.length > 0) {
             for (i = 0; i < messages.length; i++) {
-                getEmail(messages[i].id)
+                getEmailbyID(messages[i].id)
             }
         } else {
             appendPre('No Labels found.');
@@ -150,7 +150,7 @@ function listNextEmails() {
         let messages = response.result.messages;
         if (messages && messages.length > 0) {
             for (i = 0; i < messages.length; i++) {
-                getEmail(messages[i].id)
+                getEmailbyID(messages[i].id)
             }
         } else {
             appendPre('No Labels found.');
@@ -177,7 +177,7 @@ function reset() {
     elem.innerText = s;
 }
 
-function getEmail(id) {
+function getEmailbyID(id) {
     gapi.client.gmail.users.messages.get({
         'userId': 'me',
         "id": id
