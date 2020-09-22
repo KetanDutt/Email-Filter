@@ -32,10 +32,10 @@ function initClient() {
         // Listen for sign-in state changes.
         gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
         // Handle the initial sign-in state.
-        // console.log(gapi.auth2.getAuthInstance());
-        // console.log(gapi.auth2.getAuthInstance().currentUser.get());
+        console.log(gapi.auth2.getAuthInstance());
+        console.log(gapi.auth2.getAuthInstance().currentUser.get());
         // console.log(gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile());
-        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get(), gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile());
+        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get(),"");
         authorizeButton.onclick = handleAuthClick;
         signoutButton.onclick = handleSignoutClick;
     }, function (error) {
@@ -51,7 +51,7 @@ function updateSigninStatus(isSignedIn, ID) {
     if (isSignedIn) {
         Swal.fire({
             title: 'Logged IN',
-            text: "Logged in as " + ID.getEmail(),
+            text: "Logged in as " + ID,
             type: 'success',
             showCancelButton: false,
         }).then(() => {
