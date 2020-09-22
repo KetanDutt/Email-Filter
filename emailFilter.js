@@ -35,7 +35,7 @@ function initClient() {
         console.log(gapi.auth2.getAuthInstance());
         console.log(gapi.auth2.getAuthInstance().currentUser.get());
         // console.log(gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile());
-        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get(),"");
+        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get(), "");
         authorizeButton.onclick = handleAuthClick;
         signoutButton.onclick = handleSignoutClick;
     }, function (error) {
@@ -79,6 +79,7 @@ function handleAuthClick(event) {
  */
 function handleSignoutClick(event) {
     gapi.auth2.getAuthInstance().signOut();
+    document.getElementById('emails').innerText = "";
 }
 
 /**
