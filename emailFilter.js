@@ -224,11 +224,11 @@ function reset() {
     for (const obj in arr) {
         s += '<tr><td><div style="background: white;border-radius: 100px;color: black;width: 40px;padding: 10px;text-align: center;">'
             + arr[obj].num
-            + '</div></td><td> <div class="col s9">'
-            + arr[obj].email
             + '</div></td><td>'
-            + '<a class="btn waves-effect waves-dark red" onClick=deleteEmail("' + obj + '") style="margin-right: 5px;"><i class="material-icons left">delete_forever</i>Trash</a>'
-            + '<a class="btn waves-effect waves-dark green" onClick=archiveEmail("' + obj + '") ><i class="material-icons left">archive</i>Spam</a>'
+            + arr[obj].email
+            + '</td><td>'
+            + '<a class="btn waves-effect waves-dark red" onClick=deleteEmail("' + obj + '") style="margin-right: 5px;margin-bottom: 5px;"><i class="material-icons left">delete_forever</i>Trash</a>'
+            + '<a class="btn waves-effect waves-dark green" onClick=archiveEmail("' + obj + '") style="margin-right: 5px;margin-bottom: 5px;"><i class="material-icons left">archive</i>Spam</a>'
             + '</td></tr>';
     }
     s += "</tbody></table>";
