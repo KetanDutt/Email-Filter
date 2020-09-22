@@ -64,7 +64,7 @@ let deletingEmail;
  */
 function updateSigninStatus(isSignedIn, ID) {
     if (isSignedIn) {
-        document.getElementById('emails').innerText = "Getting Emails Please Wait....";
+        document.getElementById('emails').innerHTML = "<h5>Getting Emails Please Wait....</h5>";
         authorizeButton.style.display = 'none';
         signoutButton.style.display = 'block';
         Loading = true;
@@ -218,7 +218,7 @@ function listNextEmails() {
 function reset() {
     arr.sort(function (a, b) { return b.num - a.num });
     let elem = document.getElementById('emails');
-    let s = "<h5>Total email Count  " + TotalEmails + "</h5>";
+    let s = "<h5>Total email Count  <b>" + TotalEmails + "</b></h5>";
     // s += "Inbox email Count  " + ufcount + "<br><br>";
     s += '<table class="highlight"><thead><th>Count</th><th>Email</th><th>Actions</th></thead><tbody>';
     for (const obj in arr) {

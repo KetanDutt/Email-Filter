@@ -1,11 +1,11 @@
 {
-    "name": "Email Filter",
-    "short_name": "Email Filter",
+    "name": "Email Manager",
+    "short_name": "Email Manager",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Email Filter",
+    "description": "Email Manager",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
