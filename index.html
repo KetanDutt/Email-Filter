@@ -30,23 +30,38 @@
 </head>
 
 <body>
-  <div class="container row">
-    <h3 class="center"> Gmail Email Filtering </h3>
+  <div class="container">
+    <div class="row">
+      <h3 class="center"> Email Manager </h3>
+    </div>
 
     <!--Add buttons to initiate auth sequence and sign out-->
-    <!-- <button id="authorize_button" style="display: none;">Authorize</button> -->
-    <div class="col s12 m6 offset-m3 center-align" id="authorize_button">
-      <div class="row valign-wrapper neuButton" style="text-transform:none">
-        <div class="col s3">
-          <img width="20px" style="margin-top:7px; margin-right:8px" alt="Google sign-in"
-            src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/512px-Google_%22G%22_Logo.svg.png" />
-        </div>
-        <div class="col s9 center" style="font-weight: 600;color:#737373;">
-          Sign in with Google
-        </div>
+    <div class="row" id="authorize_button" style="display: none;">
+      <div class="col s12 m6 offset-m3 center-align ">
+        <a class="btn waves-effect waves-dark btn-large white valign-wrapper z-depth-4">
+          <div class="col s3">
+            <img width="55px"
+              src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/google/google.png" />
+          </div>
+          <div class="col s9 center" style="font-weight: 600;color:#737373;text-transform: capitalize;">
+            Sign in with Google
+          </div>
+        </a>
       </div>
     </div>
-    <button id="signout_button" style="display: none;">Sign Out</button>
+    <div class="row" id="signout_button" style="display: none;">
+      <div class="col s12 m6 offset-m3 center-align ">
+        <a class="btn waves-effect waves-dark btn-large white valign-wrapper z-depth-4">
+          <div class="col s3">
+            <img width="55px"
+              src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/google/google.png" />
+          </div>
+          <div class="col s9 center" style="font-weight: 600;color:#737373;text-transform: capitalize;">
+            Sign Out
+          </div>
+        </a>
+      </div>
+    </div>
 
     <pre id="content" style="white-space: pre-wrap;"></pre>
 

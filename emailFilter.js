@@ -1,6 +1,6 @@
 // Client ID and API key from the Developer Console
-let CLIENT_ID = '718310929382-cr4co8rrasgk3pcnb9pivultfc0dv1fe.apps.googleusercontent.com';
-let API_KEY = 'AIzaSyB8Bhp2jOizVAflKANTFPp6lbGtFZaWCHI';
+let CLIENT_ID = '697317707162-a677q5u0naj9mmnia0e65qcgrjo9fh10.apps.googleusercontent.com';
+let API_KEY = 'AIzaSyANjFshGIMaOip50aX9lFqrOa_gxqMx2VQ';
 
 // Array of API discovery doc URLs for APIs used by the quickstart
 let DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest"];
@@ -32,7 +32,7 @@ function initClient() {
         // Listen for sign-in state changes.
         gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
         // Handle the initial sign-in state.
-        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get(), gapi.auth2.getAuthInstance().currentUser.get().getId());
         authorizeButton.onclick = handleAuthClick;
         signoutButton.onclick = handleSignoutClick;
     }, function (error) {
@@ -44,13 +44,20 @@ function initClient() {
  *  Called when the signed in status changes, to update the UI
  *  appropriately. After a sign-in, the API is called.
  */
-function updateSigninStatus(isSignedIn) {
+function updateSigninStatus(isSignedIn, ID) {
     if (isSignedIn) {
-        document.getElementById('emails').innerText = "Getting Emails Please Wait....";
-        authorizeButton.style.display = 'none';
-        signoutButton.style.display = 'block';
-        // listLabels();
-        listEmails();
+        Swal.fire({
+            title: 'Logged IN',
+            text: "Logged in as " + ID,
+            type: 'success',
+            showCancelButton: false,
+        }).then(() => {
+            document.getElementById('emails').innerText = "Getting Emails Please Wait....";
+            authorizeButton.style.display = 'none';
+            signoutButton.style.display = 'block';
+            // listLabels();
+            listEmails();
+        });
     } else {
         authorizeButton.style.display = 'block';
         signoutButton.style.display = 'none';

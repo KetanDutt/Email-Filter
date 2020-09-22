@@ -1,13 +1,10 @@
 body {
-    background:#f0ece5;
+    background:#222222;
+    color: white;
     font-family: 'Roboto', sans-serif;
 }
 
-.neuButton {
-    padding: 1rem;
-    border: none;
-    outline: none;
-    border-radius: .5rem;
-    background: #f0ece5;
-    box-shadow: 10px 10px 20px #d8d4ce, -10px -10px 20px #ffffff;
+.z-depth-1-half, .btn:hover, .btn-large:hover, .btn-small:hover, .btn-floating:hover {
+    -webkit-box-shadow: 0 3px 3px 0 rgba(255,255,255,0.14), 0 1px 7px 0 rgba(255,255,255,0.12), 0 3px 1px -1px rgba(255,255,255,0.2);
+    box-shadow: 0 3px 3px 0 rgba(255,255,255,0.24), 0 1px 7px 0 rgba(255,255,255,0.22), 0 3px 1px -1px rgba(255,255,255,0.2);
 }
