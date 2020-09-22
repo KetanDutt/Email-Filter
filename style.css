@@ -1,0 +1,13 @@
+body {
+    background:#f0ece5;
+    font-family: 'Roboto', sans-serif;
+}
+
+.neuButton {
+    padding: 1rem;
+    border: none;
+    outline: none;
+    border-radius: .5rem;
+    background: #f0ece5;
+    box-shadow: 10px 10px 20px #d8d4ce, -10px -10px 20px #ffffff;
+}

@@ -16,15 +16,44 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="manifest" href="manifest.json">
+
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@8"></script>
+  <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@3" rel="stylesheet">
+
+  <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 
 <body>
-  <p>Gmail API Quickstart</p>
-  <!--Add buttons to initiate auth sequence and sign out-->
-  <button id="authorize_button" style="display: none;">Authorize</button>
-  <button id="signout_button" style="display: none;">Sign Out</button>
-  <pre id="content" style="white-space: pre-wrap;"></pre>
-  <div id="emails"></div>
+  <div class="container row">
+    <h3 class="center"> Gmail Email Filtering </h3>
+
+    <!--Add buttons to initiate auth sequence and sign out-->
+    <!-- <button id="authorize_button" style="display: none;">Authorize</button> -->
+    <div class="col s12 m6 offset-m3 center-align" id="authorize_button">
+      <div class="row valign-wrapper neuButton" style="text-transform:none">
+        <div class="col s3">
+          <img width="20px" style="margin-top:7px; margin-right:8px" alt="Google sign-in"
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Google_%22G%22_Logo.svg/512px-Google_%22G%22_Logo.svg.png" />
+        </div>
+        <div class="col s9 center" style="font-weight: 600;color:#737373;">
+          Sign in with Google
+        </div>
+      </div>
+    </div>
+    <button id="signout_button" style="display: none;">Sign Out</button>
+
+    <pre id="content" style="white-space: pre-wrap;"></pre>
+
+    <div id="emails"></div>
+  </div>
+
+  <!-- Scripts -->
   <script type="text/javascript" src="emailFilter.js"></script>
   <script async defer src="https://apis.google.com/js/api.js" onload="this.onload=function(){};handleClientLoad()"
     onreadystatechange="if (this.readyState === 'complete') this.onload()"></script>
