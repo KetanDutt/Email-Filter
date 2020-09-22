@@ -32,6 +32,9 @@ function initClient() {
         // Listen for sign-in state changes.
         gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
         // Handle the initial sign-in state.
+        console.log(gapi.auth2.getAuthInstance());
+        console.log(gapi.auth2.getAuthInstance().currentUser.get());
+        console.log(gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile());
         updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get(), gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getEmail());
         authorizeButton.onclick = handleAuthClick;
         signoutButton.onclick = handleSignoutClick;
