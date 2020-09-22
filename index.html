@@ -10,7 +10,7 @@
   <meta http-equiv="cache-control" content="no-cache" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="-1" />
-  
+
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -25,17 +25,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
 
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@8"></script>
-  <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@3" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark/dark.css">
 
   <link rel="stylesheet" type="text/css" href="style.css" />
 </head>
 
 <body>
-
   <div style="position: fixed;top: 10px;left: 10px;display: none;" id="signout_button">
     <a class="row btn waves-effect waves-dark btn-small white valign-wrapper z-depth-4" style="padding: 0px;">
       <div class="col s3">
@@ -50,7 +49,7 @@
 
   <div class="container">
     <div class="row">
-      <h3 class="center"> Email Manager </h3>
+      <h2 class="center"> Email Manager </h2>
     </div>
     <!--Add buttons to initiate auth sequence and sign out-->
     <div class="row" id="authorize_button" style="display: none;">
@@ -66,23 +65,10 @@
         </a>
       </div>
     </div>
-    <!-- <div class="row" id="signout_button" style="display: none;">
-      <div class="col s12 m6 offset-m3 center-align ">
-        <a class="btn waves-effect waves-dark btn-large white valign-wrapper z-depth-4">
-          <div class="col s3">
-            <img width="55px"
-              src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/google/google.png" />
-          </div>
-          <div class="col s9 center" style="font-weight: 600;color:#737373;text-transform: capitalize;">
-            Sign Out
-          </div>
-        </a>
-      </div>
-    </div> -->
 
-    <pre id="content" style="white-space: pre-wrap;"></pre>
+    <!-- <pre id="content" style="white-space: pre-wrap;"></pre> -->
 
-    <div id="emails"></div>
+    <div id="emails" class="center"></div>
   </div>
 
   <!-- Scripts -->

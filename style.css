@@ -8,3 +8,15 @@ body {
     -webkit-box-shadow: 0 3px 3px 0 rgba(255,255,255,0.14), 0 1px 7px 0 rgba(255,255,255,0.12), 0 3px 1px -1px rgba(255,255,255,0.2);
     box-shadow: 0 3px 3px 0 rgba(255,255,255,0.24), 0 1px 7px 0 rgba(255,255,255,0.22), 0 3px 1px -1px rgba(255,255,255,0.2);
 }
+
+td, th {
+    padding: 5px 5px;
+}
+
+tr {
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+table.highlight>tbody>tr:hover {
+    background-color: rgba(75,75,75,0.5);
+}

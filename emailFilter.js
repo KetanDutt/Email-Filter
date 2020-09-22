@@ -7,7 +7,7 @@ let DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/gmail/v1/res
 
 // Authorization scopes required by the API; multiple scopes can be
 // included, separated by spaces.
-let SCOPES = 'https://www.googleapis.com/auth/gmail.readonly';
+let SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify';
 let authorizeButton = document.getElementById('authorize_button');
 let signoutButton = document.getElementById('signout_button');
 
@@ -32,10 +32,11 @@ function initClient() {
         // Listen for sign-in state changes.
         gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
         // Handle the initial sign-in state.
-        console.log(gapi.auth2.getAuthInstance());
-        console.log(gapi.auth2.getAuthInstance().currentUser.get());
-        // console.log(gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile());
-        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get(), "");
+        let signed = gapi.auth2.getAuthInstance().isSignedIn.get();
+        if (signed)
+            updateSigninStatus(true, gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getEmail());
+        else
+            updateSigninStatus(false, "");
         authorizeButton.onclick = handleAuthClick;
         signoutButton.onclick = handleSignoutClick;
     }, function (error) {
@@ -43,24 +44,33 @@ function initClient() {
     });
 }
 
+let Loading = false;
+let LablesArray = [];
+let nextPageToken = "";
+let callCount = 0;
+let callCountLimit = 4;
+let EmailCount = 0;
+let arr = [];
+let TotalEmails = 0;
+let ucount = 0;
+let ufcount = 0;
+let emailArray = [];
+let archivingEmail;
+let deletingEmail;
+
 /**
  *  Called when the signed in status changes, to update the UI
  *  appropriately. After a sign-in, the API is called.
  */
 function updateSigninStatus(isSignedIn, ID) {
     if (isSignedIn) {
-        Swal.fire({
-            title: 'Logged IN',
-            text: "Logged in as " + ID,
-            type: 'success',
-            showCancelButton: false,
-        }).then(() => {
-            document.getElementById('emails').innerText = "Getting Emails Please Wait....";
-            authorizeButton.style.display = 'none';
-            signoutButton.style.display = 'block';
-            // listLabels();
-            listEmails();
-        });
+        document.getElementById('emails').innerText = "Getting Emails Please Wait....";
+        authorizeButton.style.display = 'none';
+        signoutButton.style.display = 'block';
+        Loading = true;
+        showLoadingDialog('Loading Emails', 'Please wait.. <b></b> Loaded.');
+        listLabels();
+        listEmails();
     } else {
         authorizeButton.style.display = 'block';
         signoutButton.style.display = 'none';
@@ -80,6 +90,20 @@ function handleAuthClick(event) {
 function handleSignoutClick(event) {
     gapi.auth2.getAuthInstance().signOut();
     document.getElementById('emails').innerText = "";
+    Loading = false;
+    callCountLimit = 4;
+    LablesArray = [];
+    arr = [];
+    emailArray = [];
+    nextPageToken = "";
+    callCount = 0;
+    EmailCount = 0;
+    TotalEmails = 0;
+    ucount = 0;
+    ufcount = 0;
+    archivingEmail = {};
+    deletingEmail = {};
+    location.reload();
 }
 
 /**
@@ -89,9 +113,9 @@ function handleSignoutClick(event) {
  * @param {string} message Text to be placed in pre element.
  */
 function appendPre(message) {
-    let pre = document.getElementById('content');
-    let textContent = document.createTextNode(message + '\n');
-    pre.appendChild(textContent);
+    // let pre = document.getElementById('content');
+    // let textContent = document.createTextNode(message + '\n');
+    // pre.appendChild(textContent);
 }
 
 /**
@@ -102,21 +126,51 @@ function listLabels() {
     gapi.client.gmail.users.labels.list({
         'userId': 'me'
     }).then(function (response) {
+        // console.log(response);
         let labels = response.result.labels;
-        appendPre('Labels:');
         if (labels && labels.length > 0) {
             for (i = 0; i < labels.length; i++) {
                 let label = labels[i];
-                appendPre(label.name)
+                // appendPre(label.name)
+                LablesArray.push(label);
             }
-        } else {
-            appendPre('No Labels found.');
         }
     });
 }
 
-let nextPageToken = "";
-let callCount = 0;
+function showLoadingDialog(title, html) {
+    Swal.fire({
+        title: title,
+        html: html,
+        timer: 2000,
+        allowOutsideClick: false,
+        willOpen: () => {
+            Swal.showLoading();
+            timerInterval = setInterval(() => {
+                const content = Swal.getContent()
+                if (content) {
+                    const b = content.querySelector('b')
+                    if (b) {
+                        b.textContent = TotalEmails + "/" + EmailCount
+                    }
+                }
+                if (Loading) {
+                    Swal.increaseTimer(2000);
+                }
+                else {
+                    console.log("Loading complete");
+                    Swal.stopTimer();
+                    Swal.hideLoading();
+                    Swal.close();
+                    clearInterval(timerInterval);
+                }
+            }, 100);
+        }
+    }).then(() => {
+    });
+}
+
+
 function listEmails() {
     gapi.client.gmail.users.messages.list({
         'userId': 'me',
@@ -127,14 +181,13 @@ function listEmails() {
         callCount++;
         nextPageToken = response.result.nextPageToken;
         let messages = response.result.messages;
+        EmailCount += messages.length;
         if (messages && messages.length > 0) {
             for (i = 0; i < messages.length; i++) {
                 getEmailbyID(messages[i].id)
             }
-        } else {
-            appendPre('No Labels found.');
+            listNextEmails();
         }
-        listNextEmails();
     });
 }
 
@@ -149,98 +202,184 @@ function listNextEmails() {
         callCount++;
         nextPageToken = response.result.nextPageToken;
         let messages = response.result.messages;
+        EmailCount += messages.length;
         if (messages && messages.length > 0) {
             for (i = 0; i < messages.length; i++) {
                 getEmailbyID(messages[i].id)
             }
-        } else {
-            appendPre('No Labels found.');
+            if (response.result.nextPageToken) {
+                listNextEmails();
+            }
         }
-        if (callCount < 4)
-            listNextEmails();
     });
 }
 
-let arr = [];
-let tcount = 0;
-let ucount = 0;
-let ufcount = 0;
 
 function reset() {
     arr.sort(function (a, b) { return b.num - a.num });
     let elem = document.getElementById('emails');
-    let s = "Total email Count  " + tcount + "\n";
-    // s += "Useless email Count  " + ucount + "\n\n";
-    s += "Inbox email Count  " + ufcount + "\n\n";
+    let s = "<h5>Total email Count  " + TotalEmails + "</h5>";
+    // s += "Inbox email Count  " + ufcount + "<br><br>";
+    s += '<table class="highlight"><thead><th>Count</th><th>Email</th><th>Actions</th></thead><tbody>';
     for (const obj in arr) {
-        s += arr[obj].num + "  -   " + arr[obj].email + "\n";
+        s += '<tr><td><div style="background: white;border-radius: 100px;color: black;width: 40px;padding: 10px;text-align: center;">'
+            + arr[obj].num
+            + '</div></td><td> <div class="col s9">'
+            + arr[obj].email
+            + '</div></td><td>'
+            + '<a class="btn waves-effect waves-dark red" onClick=deleteEmail("' + obj + '") style="margin-right: 5px;"><i class="material-icons left">delete_forever</i>Trash</a>'
+            + '<a class="btn waves-effect waves-dark green" onClick=archiveEmail("' + obj + '") ><i class="material-icons left">archive</i>Spam</a>'
+            + '</td></tr>';
     }
-    elem.innerText = s;
+    s += "</tbody></table>";
+    elem.innerHTML = s;
 }
+
+function deleteEmail(ID) {
+    deletingEmail = arr[ID];
+    Swal.fire({
+        title: 'Are you sure?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, Trash it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Loading = true;
+            showLoadingDialog('Archiving Emails', 'Please wait..');
+            let ids = [];
+            for (const elem in emailArray) {
+                if (emailArray[elem].email === deletingEmail.email) {
+                    ids.push(emailArray[elem].id + "");
+                }
+            }
+            let addLabelIds = ["TRASH"];
+            gapi.client.gmail.users.messages.batchModify({
+                'userId': 'me',
+                'ids': ids,
+                'addLabelIds': addLabelIds
+            }).then(function (response) {
+                Loading = false;
+                for (const elem in arr) {
+                    if (arr[elem].email === deletingEmail.email) {
+                        TotalEmails -= arr[elem].num;
+                        arr.splice(elem, 1);
+                    }
+                }
+                reset();
+            });
+        }
+    });
+}
+
+function archiveEmail(ID) {
+    archivingEmail = arr[ID];
+    Swal.fire({
+        title: 'Are you sure?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, Spam it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Loading = true;
+            showLoadingDialog('Archiving Emails', 'Please wait..');
+            let ids = [];
+            for (const elem in emailArray) {
+                if (emailArray[elem].email === archivingEmail.email) {
+                    ids.push(emailArray[elem].id + "");
+                }
+            }
+            let addLabelIds = ["SPAM"];
+            gapi.client.gmail.users.messages.batchModify({
+                'userId': 'me',
+                'ids': ids,
+                'addLabelIds': addLabelIds
+            }).then(function (response) {
+                Loading = false;
+                for (const elem in arr) {
+                    if (arr[elem].email === archivingEmail.email) {
+                        TotalEmails -= arr[elem].num;
+                        arr.splice(elem, 1);
+                    }
+                }
+                reset();
+            });
+        }
+    });
+}
+
 
 function getEmailbyID(id) {
     gapi.client.gmail.users.messages.get({
         'userId': 'me',
         "id": id
     }).then(function (response) {
-        tcount++;
-        let unread = false;
-        let inbox = false;
-        let labels = response.result.labelIds;
-        for (i = 0; i < labels.length; i++) {
-            if (labels[i] === "UNREAD") {
-                unread = true;
-                break;
-            }
-        }
+        TotalEmails++;
+        let email = "";
+        // let unread = false;
+        // let extra = false;
+        // let inbox = false;
+        // let labels = response.result.labelIds;
         // for (i = 0; i < labels.length; i++) {
-        //   if (labels[i] === "CATEGORY_SOCIAL" || labels[i] === "CATEGORY_PROMOTIONS") {
-        //     unread = false;
-        //     ucount++;
-        //     break;
-        //   }
-        // } 
-        for (i = 0; i < labels.length; i++) {
-            if (labels[i] === "INBOX") {
-                inbox = true;
-                break;
-            }
-        }
-        if (unread && inbox) {
-            ufcount++;
-            // console.log(response);
-            let headers = response.result.payload.headers;
-            if (headers && headers.length > 0) {
-                for (i = 0; i < headers.length; i++) {
-                    let message = headers[i];
-                    if (message.name === "From") {
-                        // appendPre(message.value);
-                        let val = "";
-                        if (message.value.indexOf("<") !== -1) {
-                            val = message.value.substring(message.value.indexOf("<") + 1, message.value.indexOf(">"));
-                        } else {
-                            val = message.value;
-                        }
-                        let found = false;
-                        for (const obj in arr) {
-                            if (arr[obj].email === val) {
-                                found = true;
-                                arr[obj].num++;
-                            }
-                        }
-                        if (!found) {
-                            arr.push({
-                                email: val,
-                                num: 1
-                            });
+        //     if (labels[i] === "UNREAD") {
+        //         unread = true;
+        //         break;
+        //     }
+        // }
+        // for (i = 0; i < labels.length; i++) {
+        //     if (labels[i] === "CATEGORY_SOCIAL" || labels[i] === "CATEGORY_PROMOTIONS") {
+        //         extra = true;
+        //         break;
+        //     }
+        // }
+        // for (i = 0; i < labels.length; i++) {
+        //     if (labels[i] === "INBOX") {
+        //         inbox = true;
+        //         break;
+        //     }
+        // }
+        // if (unread && (inbox || extra)) {
+        ufcount++;
+        let headers = response.result.payload.headers;
+        if (headers && headers.length > 0) {
+            for (i = 0; i < headers.length; i++) {
+                let message = headers[i];
+                if (message.name === "From") {
+                    // appendPre(message.value);
+                    if (message.value.indexOf("<") !== -1) {
+                        email = message.value.substring(message.value.indexOf("<") + 1, message.value.indexOf(">"));
+                    } else {
+                        email = message.value;
+                    }
+                    let found = false;
+                    for (const obj in arr) {
+                        if (arr[obj].email === email) {
+                            found = true;
+                            arr[obj].num++;
                         }
                     }
+                    if (!found) {
+                        arr.push({
+                            email: email,
+                            num: 1
+                        });
+                    }
+                    break;
                 }
             }
         }
-        reset();
-        // if (tcount == 500 || tcount == 1000 || tcount == 1500) {
-        //   listNextEmails();
+        emailArray.push({
+            id: response.result.id,
+            email: email
+        });
         // }
+        reset();
+        if (EmailCount === TotalEmails) {
+            console.log(EmailCount + "    " + TotalEmails);
+            Loading = false;
+        }
     });
 }
