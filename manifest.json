@@ -1,6 +1,6 @@
 {
-    "name": "Email Manager",
-    "short_name": "Email Manager",
+    "name": "EmailManager",
+    "short_name": "EmailManager",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
