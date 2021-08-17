@@ -28,7 +28,7 @@ function initClient() {
         clientId: CLIENT_ID,
         discoveryDocs: DISCOVERY_DOCS,
         scope: SCOPES
-    }).then(function () {
+    }).then(function() {
         // Listen for sign-in state changes.
         gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
         // Handle the initial sign-in state.
@@ -39,7 +39,7 @@ function initClient() {
             updateSigninStatus(false, "");
         authorizeButton.onclick = handleAuthClick;
         signoutButton.onclick = handleSignoutClick;
-    }, function (error) {
+    }, function(error) {
         appendPre(JSON.stringify(error, null, 2));
     });
 }
@@ -125,7 +125,7 @@ function appendPre(message) {
 function listLabels() {
     gapi.client.gmail.users.labels.list({
         'userId': 'me'
-    }).then(function (response) {
+    }).then(function(response) {
         // console.log(response);
         let labels = response.result.labels;
         if (labels && labels.length > 0) {
@@ -156,8 +156,7 @@ function showLoadingDialog(title, html) {
                 }
                 if (Loading) {
                     Swal.increaseTimer(2000);
-                }
-                else {
+                } else {
                     console.log("Loading complete");
                     Swal.stopTimer();
                     Swal.hideLoading();
@@ -166,8 +165,7 @@ function showLoadingDialog(title, html) {
                 }
             }, 100);
         }
-    }).then(() => {
-    });
+    }).then(() => {});
 }
 
 
@@ -175,8 +173,10 @@ function listEmails() {
     gapi.client.gmail.users.messages.list({
         'userId': 'me',
         "maxResults": 500,
+        "labelIds": 'INBOX',
+        'q': 'is:unread',
         "includeSpamTrash": false
-    }).then(function (response) {
+    }).then(function(response) {
         console.log(response);
         callCount++;
         nextPageToken = response.result.nextPageToken;
@@ -196,8 +196,10 @@ function listNextEmails() {
         'userId': 'me',
         "maxResults": 500,
         "pageToken": nextPageToken,
+        "labelIds": 'INBOX',
+        'q': 'is:unread',
         "includeSpamTrash": false
-    }).then(function (response) {
+    }).then(function(response) {
         console.log(response);
         callCount++;
         nextPageToken = response.result.nextPageToken;
@@ -216,20 +218,20 @@ function listNextEmails() {
 
 
 function reset() {
-    arr.sort(function (a, b) { return b.num - a.num });
+    arr.sort(function(a, b) { return b.num - a.num });
     let elem = document.getElementById('emails');
     let s = "<h5>Total email Count  <b>" + TotalEmails + "</b></h5>";
     // s += "Inbox email Count  " + ufcount + "<br><br>";
     s += '<table class="highlight"><thead><th>Count</th><th>Email</th><th>Actions</th></thead><tbody>';
     for (const obj in arr) {
-        s += '<tr><td><div style="background: white;border-radius: 100px;color: black;width: 40px;padding: 10px;text-align: center;">'
-            + arr[obj].num
-            + '</div></td><td>'
-            + arr[obj].email
-            + '</td><td>'
-            + '<a class="btn waves-effect waves-dark red" onClick=deleteEmail("' + obj + '") style="margin-right: 5px;margin-bottom: 5px;"><i class="material-icons left">delete_forever</i>Trash</a>'
-            + '<a class="btn waves-effect waves-dark green" onClick=archiveEmail("' + obj + '") style="margin-right: 5px;margin-bottom: 5px;"><i class="material-icons left">archive</i>Spam</a>'
-            + '</td></tr>';
+        s += '<tr><td><div style="background: white;border-radius: 100px;color: black;width: 40px;padding: 10px;text-align: center;">' +
+            arr[obj].num +
+            '</div></td><td>' +
+            arr[obj].email +
+            '</td><td>' +
+            '<a class="btn waves-effect waves-dark red" onClick=deleteEmail("' + obj + '") style="margin-right: 5px;margin-bottom: 5px;"><i class="material-icons left">delete_forever</i>Trash</a>' +
+            '<a class="btn waves-effect waves-dark green" onClick=archiveEmail("' + obj + '") style="margin-right: 5px;margin-bottom: 5px;"><i class="material-icons left">archive</i>Spam</a>' +
+            '</td></tr>';
     }
     s += "</tbody></table>";
     elem.innerHTML = s;
@@ -259,7 +261,7 @@ function deleteEmail(ID) {
                 'userId': 'me',
                 'ids': ids,
                 'addLabelIds': addLabelIds
-            }).then(function (response) {
+            }).then(function(response) {
                 Loading = false;
                 for (const elem in arr) {
                     if (arr[elem].email === deletingEmail.email) {
@@ -297,7 +299,7 @@ function archiveEmail(ID) {
                 'userId': 'me',
                 'ids': ids,
                 'addLabelIds': addLabelIds
-            }).then(function (response) {
+            }).then(function(response) {
                 Loading = false;
                 for (const elem in arr) {
                     if (arr[elem].email === archivingEmail.email) {
@@ -316,7 +318,7 @@ function getEmailbyID(id) {
     gapi.client.gmail.users.messages.get({
         'userId': 'me',
         "id": id
-    }).then(function (response) {
+    }).then(function(response) {
         TotalEmails++;
         let email = "";
         // let unread = false;
@@ -350,7 +352,7 @@ function getEmailbyID(id) {
                 if (message.name === "From") {
                     // appendPre(message.value);
                     if (message.value.indexOf("<") !== -1) {
-                        email = message.value.substring(message.value.indexOf("<") + 1, message.value.indexOf(">"));
+                        email = "from: " + message.value.substring(message.value.indexOf("<") + 1, message.value.indexOf(">"));
                     } else {
                         email = message.value;
                     }
