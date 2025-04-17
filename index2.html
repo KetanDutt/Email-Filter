@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Advanced Email Manager">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="cache-control" content="no-cache" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="-1" />
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Email Manager">
+
+  <title>Email Manager</title>
+
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="manifest" href="manifest.json">
+
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@5/dark.css">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+
+<body class="dark-theme">
+  <header>
+    <nav>
+      <div class="nav-wrapper">
+        <a href="#" class="brand-logo center">Email Manager</a>
+        <ul id="nav-mobile" class="right">
+          <li>
+            <a href="#" id="theme-toggle" title="Toggle Dark/Light Mode">
+              <i class="fas fa-moon"></i>
+            </a>
+          </li>
+          <li id="signout_button" style="display: none;">
+            <a href="#" class="btn waves-effect waves-light red darken-2">
+              <i class="material-icons left">logout</i>Sign Out
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container">
+    <div id="authorize_button" class="center-align" style="display: none; margin-top: 2rem;">
+      <a class="btn waves-effect waves-light blue darken-3 btn-large">
+        <i class="material-icons left">account_circle</i> Sign in with Google
+      </a>
+    </div>
+
+    <div id="filter-controls" class="row" style="display: none;">
+      <div class="col s12 m6">
+        <div class="input-field">
+          <select id="filter-type">
+            <option value="unread" selected>Unread</option>
+            <option value="all">All</option>
+            <option value="read">Read</option>
+            <option value="starred">Starred</option>
+          </select>
+          <label>Filter Emails</label>
+        </div>
+      </div>
+      <div class="col s12 m6">
+        <div class="input-field">
+          <input id="search-emails" type="text">
+          <label for="search-emails">Search Senders</label>
+        </div>
+      </div>
+    </div>
+
+    <div id="stats" class="row" style="display: none;">
+      <div class="col s12">
+        <div class="card-panel teal darken-2 white-text">
+          <div class="row valign-wrapper">
+            <div class="col s4 center-align">
+              <h5><i class="material-icons small">email</i> <span id="total-emails">0</span></h5>
+              <p>Total Emails</p>
+            </div>
+            <div class="col s4 center-align">
+              <h5><i class="material-icons small">mark_email_unread</i> <span id="unread-emails">0</span></h5>
+              <p>Unread</p>
+            </div>
+            <div class="col s4 center-align">
+              <h5><i class="material-icons small">group</i> <span id="senders-count">0</span></h5>
+              <p>Senders</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="emails" class="row"></div>
+
+    <div id="loading" class="center-align" style="display: none; margin: 2rem 0;">
+      <div class="preloader-wrapper big active">
+        <div class="spinner-layer spinner-blue-only">
+          <div class="circle-clipper left">
+            <div class="circle"></div>
+          </div>
+          <div class="gap-patch">
+            <div class="circle"></div>
+          </div>
+          <div class="circle-clipper right">
+            <div class="circle"></div>
+          </div>
+        </div>
+      </div>
+      <p>Loading emails...</p>
+    </div>
+  </main>
+
+  <footer class="page-footer">
+    <div class="container">
+      <div class="row">
+        <div class="col s12">
+          <p class="center-align grey-text text-lighten-4">Email Manager &copy; 2023</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="emailManager.js"></script>
+  <script async defer src="https://apis.google.com/js/api.js" 
+    onload="this.onload=function(){};handleClientLoad()"
+    onreadystatechange="if (this.readyState === 'complete') this.onload()"></script>
+</body>
+
+</html>

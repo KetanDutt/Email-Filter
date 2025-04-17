@@ -1,80 +1,1109 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Email Manager">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gmail Manager Pro</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+            --primary-color: #4285f4;
+            --secondary-color: #34a853;
+            --danger-color: #ea4335;
+            --warning-color: #fbbc05;
+            --dark-bg: #121212;
+            --dark-surface: #1e1e1e;
+            --dark-text: #ffffff;
+            --dark-secondary-text: rgba(255, 255, 255, 0.7);
+            --dark-button-bg: #33333369;
+            --light-bg: #f5f5f5;
+            --light-surface: #ffffff;
+            --light-text: #212121;
+            --light-secondary-text: rgba(0, 0, 0, 0.6);
+            --light-button-bg: #e8f0fe;
+            --border-color: #dadce0;
+        }
 
-  <meta http-equiv="cache-control" content="no-cache" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="-1" />
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light-bg);
+            color: var(--light-text);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
 
-  <!-- iOS meta tags & icons -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Email Manager">
+        body.dark-mode {
+            background-color: var(--dark-bg);
+            color: var(--dark-text);
+            --border-color: #444;
+        }
 
-  <title>Email Manager</title>
+        .header {
+            background-color: var(--light-surface);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s ease;
+        }
 
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-  <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="manifest" href="manifest.json">
+        body.dark-mode .header {
+            background-color: var(--dark-surface);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
 
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+        .logo img {
+            height: 40px;
+        }
 
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark/dark.css">
+        .logo h1 {
+            font-size: 20px;
+            font-weight: 500;
+            margin: 0;
+            color: var(--light-secondary-text);
+        }
 
-  <link rel="stylesheet" type="text/css" href="style.css" />
+        body.dark-mode .logo h1 {
+            color: var(--dark-secondary-text);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .auth-btn {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--light-text);
+        }
+
+        body.dark-mode .btn-outline {
+            color: var(--dark-text);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--light-secondary-text);
+            font-size: 24px;
+            padding: 5px;
+            transition: color 0.3s ease;
+        }
+
+        body.dark-mode .theme-toggle {
+            color: var(--dark-secondary-text);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--light-secondary-text);
+            position: relative;
+            transition: color 0.3s ease;
+        }
+
+        body.dark-mode .tab {
+            color: var(--dark-secondary-text);
+        }
+
+        .tab.active {
+            color: var(--primary-color);
+        }
+
+        .tab.active:after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background-color: var(--primary-color);
+        }
+
+        .tab-badge {
+            background-color: var(--light-button-bg);
+            color: var(--primary-color);
+            border-radius: 16px;
+            padding: 2px 8px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+
+        body.dark-mode .tab-badge {
+            background-color: var(--dark-button-bg);
+        }
+
+        .tab-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--light-surface);
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1), 0 1px 3px 1px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        body.dark-mode table {
+            background-color: var(--dark-surface);
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.3);
+        }
+
+        th,
+        td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            transition: border-color 0.3s ease;
+        }
+
+        th {
+            background-color: var(--light-bg);
+            font-weight: 500;
+            color: var(--light-secondary-text);
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        body.dark-mode th {
+            background-color: #1a1a1a;
+            color: var(--dark-secondary-text);
+        }
+
+        th.sort-asc:after {
+            content: ' ↑';
+        }
+
+        th.sort-desc:after {
+            content: ' ↓';
+        }
+
+        tr {
+            transition: background-color 0.3s ease;
+        }
+
+        tr:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        body.dark-mode tr:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .email-sender {
+            font-weight: 500;
+        }
+
+        .email-count {
+            background-color: var(--light-button-bg);
+            color: var(--primary-color);
+            border-radius: 16px;
+            padding: 2px 8px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+
+        body.dark-mode .email-count {
+            background-color: var(--dark-button-bg);
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .action-btn i {
+            font-size: 16px;
+        }
+
+        .btn-read {
+            background-color: var(--light-button-bg);
+            color: var(--primary-color);
+        }
+
+        body.dark-mode .btn-read {
+            background-color: var(--dark-button-bg);
+        }
+
+        .btn-archive {
+            background-color: #e6f4ea;
+            color: var(--secondary-color);
+        }
+
+        body.dark-mode .btn-archive {
+            background-color: var(--dark-button-bg);
+        }
+
+        .btn-delete {
+            background-color: #fce8e6;
+            color: var(--danger-color);
+        }
+
+        body.dark-mode .btn-delete {
+            background-color: var(--dark-button-bg);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+        }
+
+        .loading-overlay p {
+            color: white;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 
-<body>
-  <div style="position: fixed;top: 10px;left: 10px;display: none;" id="signout_button">
-    <a class="row btn waves-effect waves-dark btn-small white valign-wrapper z-depth-4" style="padding: 0px;">
-      <div class="col s3">
-        <img width="30px"
-          src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/google/google.png" />
-      </div>
-      <div class="col s9 center" style="font-weight: 600;color:#737373;text-transform: capitalize;">
-        Sign Out
-      </div>
-    </a>
-  </div>
-
-  <div class="container">
-    <div class="row">
-      <h2 class="center"> Email Manager </h2>
-    </div>
-    <!--Add buttons to initiate auth sequence and sign out-->
-    <div class="row" id="authorize_button" style="display: none;">
-      <div class="col s12 m6 offset-m3 center-align ">
-        <a class="btn waves-effect waves-dark btn-large white valign-wrapper z-depth-4">
-          <div class="col s3">
-            <img width="55px"
-              src="https://raw.githubusercontent.com/github/explore/80688e429a7d4ef2fca1e82350fe8e3517d3494d/topics/google/google.png" />
-          </div>
-          <div class="col s9 center" style="font-weight: 600;color:#737373;text-transform: capitalize;">
-            Sign in with Google
-          </div>
-        </a>
-      </div>
+<body class="light-mode">
+    <div class="header">
+        <div class="logo">
+            <img src="https://ssl.gstatic.com/ui/v1/icons/mail/rfr/logo_gmail_lockup_default_1x_r5.png" alt="Gmail">
+            <h1>Gmail Manager Pro</h1>
+        </div>
+        <div class="header-actions">
+            <button class="theme-toggle" id="themeToggle">
+                <i class="material-icons">brightness_4</i>
+            </button>
+            <div class="auth-btn">
+                <a id="signout_button" class="btn btn-outline hidden">
+                    <i class="material-icons">logout</i>
+                    Sign Out
+                </a>
+                <a id="authorize_button" class="btn btn-primary">
+                    <i class="material-icons">account_circle</i>
+                    Sign In
+                </a>
+            </div>
+        </div>
     </div>
 
-    <!-- <pre id="content" style="white-space: pre-wrap;"></pre> -->
+    <div class="container">
+        <div id="content" class="hidden">
+            <div class="tabs">
+                <div class="tab active" data-tab="primary">
+                    Primary <span id="primary-count" class="tab-badge">0</span>
+                </div>
+                <div class="tab" data-tab="social">
+                    Social <span id="social-count" class="tab-badge">0</span>
+                </div>
+                <div class="tab" data-tab="promotions">
+                    Promotions <span id="promotions-count" class="tab-badge">0</span>
+                </div>
+                <div class="tab" data-tab="updates">
+                    Updates <span id="updates-count" class="tab-badge">0</span>
+                </div>
+            </div>
 
-    <div id="emails" class="center"></div>
-  </div>
+            <div class="tab-actions">
+                <button class="btn btn-outline" id="mark-all-read">
+                    <i class="material-icons">mark_email_read</i>
+                    Mark All as Read
+                </button>
+                <button class="btn btn-outline" id="archive-all">
+                    <i class="material-icons">archive</i>
+                    Archive All
+                </button>
+                <button class="btn btn-outline" id="delete-all">
+                    <i class="material-icons">delete</i>
+                    Delete All
+                </button>
+            </div>
 
-  <!-- Scripts -->
-  <script type="text/javascript" src="emailFilter.js"></script>
-  <script async defer src="https://apis.google.com/js/api.js" onload="this.onload=function(){};handleClientLoad()"
-    onreadystatechange="if (this.readyState === 'complete') this.onload()"></script>
+            <div id="primary-content" class="tab-content">
+                <table>
+                    <thead>
+                        <tr>
+                            <th data-sort="sender">Sender</th>
+                            <th data-sort="count" class="sort-desc">Count</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="primary-emails"></tbody>
+                </table>
+            </div>
+
+            <div id="social-content" class="tab-content hidden">
+                <table>
+                    <thead>
+                        <tr>
+                            <th data-sort="sender">Sender</th>
+                            <th data-sort="count" class="sort-desc">Count</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="social-emails"></tbody>
+                </table>
+            </div>
+
+            <div id="promotions-content" class="tab-content hidden">
+                <table>
+                    <thead>
+                        <tr>
+                            <th data-sort="sender">Sender</th>
+                            <th data-sort="count" class="sort-desc">Count</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="promotions-emails"></tbody>
+                </table>
+            </div>
+
+            <div id="updates-content" class="tab-content hidden">
+                <table>
+                    <thead>
+                        <tr>
+                            <th data-sort="sender">Sender</th>
+                            <th data-sort="count" class="sort-desc">Count</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="updates-emails"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p>Loading your emails...</p>
+    </div>
+
+    <script>
+        // Configuration
+        const config = {
+            CLIENT_ID: '',
+            API_KEY: '',
+            DISCOVERY_DOCS: ["https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest"],
+            SCOPES: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify'
+        };
+
+        // Load credentials from credentials.json
+        fetch('credentials.json')
+            .then(response => response.json())
+            .then(credentials => {
+                config.CLIENT_ID = credentials.CLIENT_ID;
+                config.API_KEY = credentials.API_KEY;
+            })
+            .catch(error => {
+                console.error('Error loading credentials:', error);
+                showError('Failed to load credentials. Please check credentials.json');
+            });
+
+        // DOM Elements
+        const elements = {
+            authorizeButton: document.getElementById('authorize_button'),
+            signoutButton: document.getElementById('signout_button'),
+            content: document.getElementById('content'),
+            loading: document.getElementById('loading'),
+            tabs: document.querySelectorAll('.tab'),
+            tabContents: document.querySelectorAll('.tab-content'),
+            countElements: {
+                primary: document.getElementById('primary-count'),
+                social: document.getElementById('social-count'),
+                promotions: document.getElementById('promotions-count'),
+                updates: document.getElementById('updates-count')
+            },
+            emailTables: {
+                primary: document.getElementById('primary-emails'),
+                social: document.getElementById('social-emails'),
+                promotions: document.getElementById('promotions-emails'),
+                updates: document.getElementById('updates-emails')
+            },
+            actionButtons: {
+                markAllRead: document.getElementById('mark-all-read'),
+                archiveAll: document.getElementById('archive-all'),
+                deleteAll: document.getElementById('delete-all')
+            },
+            themeToggle: document.getElementById('themeToggle')
+        };
+
+        // App State
+        const state = {
+            isLoading: false,
+            currentTab: 'primary',
+            emails: {
+                primary: [],
+                social: [],
+                promotions: [],
+                updates: []
+            },
+            sortState: {
+                primary: { field: 'count', direction: 'desc' },
+                social: { field: 'count', direction: 'desc' },
+                promotions: { field: 'count', direction: 'desc' },
+                updates: { field: 'count', direction: 'desc' }
+            },
+            darkMode: localStorage.getItem('darkMode') === 'true'
+        };
+
+        // Initialize the app
+        function init() {
+            // Set up event listeners
+            elements.tabs.forEach(tab => {
+                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+            });
+
+            elements.actionButtons.markAllRead.addEventListener('click', () => handleBulkAction('markRead'));
+            elements.actionButtons.archiveAll.addEventListener('click', () => handleBulkAction('archive'));
+            elements.actionButtons.deleteAll.addEventListener('click', () => handleBulkAction('delete'));
+
+            // Set up theme toggle
+            elements.themeToggle.addEventListener('click', toggleDarkMode);
+            applyDarkMode();
+
+            // Set up sorting
+            document.querySelectorAll('th[data-sort]').forEach(th => {
+                th.addEventListener('click', () => {
+                    const field = th.dataset.sort;
+                    const category = document.querySelector('.tab.active').dataset.tab;
+                    toggleSort(category, field);
+                });
+            });
+
+            // Load Google API
+            gapi.load('client:auth2', initClient);
+        }
+
+        // Toggle dark mode
+        function toggleDarkMode() {
+            state.darkMode = !state.darkMode;
+            localStorage.setItem('darkMode', state.darkMode);
+            applyDarkMode();
+        }
+
+        // Apply dark mode
+        function applyDarkMode() {
+            if (state.darkMode) {
+                document.body.classList.add('dark-mode');
+                document.body.classList.remove('light-mode');
+                elements.themeToggle.innerHTML = '<i class="material-icons">brightness_7</i>';
+            } else {
+                document.body.classList.add('light-mode');
+                document.body.classList.remove('dark-mode');
+                elements.themeToggle.innerHTML = '<i class="material-icons">brightness_4</i>';
+            }
+        }
+
+        // Initialize Google API client
+        function initClient() {
+            gapi.client.init({
+                apiKey: config.API_KEY,
+                clientId: config.CLIENT_ID,
+                discoveryDocs: config.DISCOVERY_DOCS,
+                scope: config.SCOPES
+            }).then(() => {
+                // Set up auth listeners
+                gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+
+                // Handle initial auth state
+                updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+
+                // Set up click handlers
+                elements.authorizeButton.onclick = handleAuthClick;
+                elements.signoutButton.onclick = handleSignoutClick;
+            }).catch(error => {
+                console.error('Error initializing Google API client:', error);
+                showError('Failed to initialize. Please try again later.');
+            });
+        }
+
+        // Handle sign-in status changes
+        function updateSigninStatus(isSignedIn) {
+            if (isSignedIn) {
+                elements.authorizeButton.classList.add('hidden');
+                elements.signoutButton.classList.remove('hidden');
+                elements.content.classList.remove('hidden');
+                elements.loading.classList.add('hidden');
+
+                // Load emails
+                loadEmails();
+            } else {
+                elements.authorizeButton.classList.remove('hidden');
+                elements.signoutButton.classList.add('hidden');
+                elements.content.classList.add('hidden');
+                elements.loading.classList.add('hidden');
+            }
+        }
+
+        // Handle sign-in
+        function handleAuthClick() {
+            gapi.auth2.getAuthInstance().signIn();
+        }
+
+        // Handle sign-out
+        function handleSignoutClick() {
+            gapi.auth2.getAuthInstance().signOut();
+            resetAppState();
+        }
+
+        // Reset app state
+        function resetAppState() {
+            state.emails = {
+                primary: [],
+                social: [],
+                promotions: [],
+                updates: []
+            };
+
+            // Clear tables
+            Object.values(elements.emailTables).forEach(table => {
+                table.innerHTML = '';
+            });
+
+            // Reset counts
+            Object.values(elements.countElements).forEach(el => {
+                el.textContent = '0';
+            });
+        }
+
+        // Load emails
+        function loadEmails() {
+            state.isLoading = true;
+            elements.loading.classList.remove('hidden');
+
+            // Load emails for each category
+            const categories = ['primary', 'social', 'promotions', 'updates'];
+            categories.forEach(category => {
+                loadCategoryEmails(category);
+            });
+        }
+
+        // Load emails for a specific category
+        function loadCategoryEmails(category) {
+            const query = `category:${category} AND in:inbox`;
+
+            gapi.client.gmail.users.messages.list({
+                'userId': 'me',
+                'q': query,
+                'maxResults': 500
+            }).then(response => {
+                const messages = response.result.messages || [];
+                if (messages.length > 0) {
+                    processEmails(messages, category);
+                } else {
+                    // No emails in this category
+                    state.emails[category] = [];
+                    updateUI(category);
+                    checkAllCategoriesLoaded();
+                }
+            }).catch(error => {
+                console.error(`Error loading ${category} emails:`, error);
+                showError(`Failed to load ${category} emails`);
+                checkAllCategoriesLoaded();
+            });
+        }
+
+        // Process emails for a category
+        function processEmails(messages, category) {
+            const emailMap = {};
+            const batchSize = 50; // Process in batches to avoid API limits
+            const batches = [];
+
+            // Create batches
+            for (let i = 0; i < messages.length; i += batchSize) {
+                batches.push(messages.slice(i, i + batchSize));
+            }
+
+            // Process each batch
+            const batchPromises = batches.map(batch => {
+                const batchRequest = gapi.client.newBatch();
+
+                batch.forEach(message => {
+                    batchRequest.add(gapi.client.gmail.users.messages.get({
+                        'userId': 'me',
+                        'id': message.id,
+                        'format': 'metadata',
+                        'metadataHeaders': ['From']
+                    }));
+                });
+
+                return batchRequest;
+            });
+
+            // Execute all batches
+            Promise.all(batchPromises.map(batch => batch.then()))
+                .then(batchResponses => {
+                    batchResponses.forEach(response => {
+                        // Process each email in the batch
+                        for (const key in response.result) {
+                            if (response.result[key].status === 200) {
+                                const email = response.result[key].result;
+                                const fromHeader = email.payload.headers.find(h => h.name === 'From');
+                                const fromValue = fromHeader ? fromHeader.value : 'Unknown';
+
+                                // Extract sender email
+                                let sender = fromValue.includes('<') ?
+                                    fromValue.substring(fromValue.indexOf('<') + 1, fromValue.indexOf('>')) :
+                                    fromValue;
+
+                                // Group by sender
+                                if (!emailMap[sender]) {
+                                    emailMap[sender] = {
+                                        ids: [],
+                                        isUnread: email.labelIds.includes('UNREAD')
+                                    };
+                                }
+                                emailMap[sender].ids.push(email.id);
+                            }
+                        }
+                    });
+
+                    // Update state
+                    state.emails[category] = Object.entries(emailMap).map(([sender, data]) => ({
+                        sender,
+                        ids: data.ids,
+                        count: data.ids.length,
+                        isUnread: data.isUnread
+                    }));
+
+                    // Sort emails
+                    sortEmails(category);
+                    updateUI(category);
+                    checkAllCategoriesLoaded();
+                })
+                .catch(error => {
+                    console.error('Error processing email batch:', error);
+                    showError('Failed to process emails');
+                    checkAllCategoriesLoaded();
+                });
+        }
+
+        // Check if all categories have finished loading
+        function checkAllCategoriesLoaded() {
+            const allLoaded = Object.values(state.emails).every(
+                emails => emails !== undefined
+            );
+
+            if (allLoaded) {
+                elements.loading.classList.add('hidden');
+                state.isLoading = false;
+            }
+        }
+
+        // Toggle sort direction for a field
+        function toggleSort(category, field) {
+            if (state.sortState[category].field === field) {
+                // Toggle direction
+                state.sortState[category].direction =
+                    state.sortState[category].direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                // New field, default to descending
+                state.sortState[category].field = field;
+                state.sortState[category].direction = 'desc';
+            }
+
+            // Update sort indicators
+            updateSortIndicators(category);
+
+            // Sort and update UI
+            sortEmails(category);
+            updateUI(category);
+        }
+
+        // Update sort indicators in table headers
+        function updateSortIndicators(category) {
+            const activeTabContent = document.getElementById(`${category}-content`);
+            const headers = activeTabContent.querySelectorAll('th[data-sort]');
+
+            headers.forEach(header => {
+                header.classList.remove('sort-asc', 'sort-desc');
+                if (header.dataset.sort === state.sortState[category].field) {
+                    header.classList.add(`sort-${state.sortState[category].direction}`);
+                }
+            });
+        }
+
+        // Sort emails for a category
+        function sortEmails(category) {
+            const { field, direction } = state.sortState[category];
+
+            state.emails[category].sort((a, b) => {
+                let comparison = 0;
+
+                if (field === 'sender') {
+                    comparison = a.sender.localeCompare(b.sender);
+                } else if (field === 'count') {
+                    comparison = a.count - b.count;
+                }
+
+                return direction === 'asc' ? comparison : -comparison;
+            });
+        }
+
+        // Update UI for a category
+        function updateUI(category) {
+            const emails = state.emails[category];
+            const table = elements.emailTables[category];
+
+            // Update count
+            elements.countElements[category].textContent = emails.length;
+
+            // Clear table
+            table.innerHTML = '';
+
+            // Add rows
+            emails.forEach(email => {
+                const row = document.createElement('tr');
+
+                row.innerHTML = `
+          <td class="email-sender">${email.sender}</td>
+          <td><span class="email-count">${email.count}</span></td>
+          <td>
+            <button class="action-btn btn-read" data-action="read" data-sender="${encodeURIComponent(email.sender)}">
+              <i class="material-icons">mark_email_read</i> Read
+            </button>
+            <button class="action-btn btn-archive" data-action="archive" data-sender="${encodeURIComponent(email.sender)}">
+              <i class="material-icons">archive</i> Archive
+            </button>
+            <button class="action-btn btn-delete" data-action="delete" data-sender="${encodeURIComponent(email.sender)}">
+              <i class="material-icons">delete</i> Delete
+            </button>
+          </td>
+        `;
+
+                // Add event listeners to action buttons
+                row.querySelectorAll('.action-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const action = e.currentTarget.dataset.action;
+                        const sender = decodeURIComponent(e.currentTarget.dataset.sender);
+                        handleEmailAction(action, sender, category);
+                    });
+                });
+
+                table.appendChild(row);
+            });
+        }
+
+        // Switch between tabs
+        function switchTab(tabName) {
+            state.currentTab = tabName;
+
+            // Update tab styling
+            elements.tabs.forEach(tab => {
+                if (tab.dataset.tab === tabName) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+
+            // Update content visibility
+            elements.tabContents.forEach(content => {
+                if (content.id === `${tabName}-content`) {
+                    content.classList.remove('hidden');
+                } else {
+                    content.classList.add('hidden');
+                }
+            });
+        }
+
+        // Handle email actions (read, archive, delete)
+        function handleEmailAction(action, sender, category) {
+            const emails = state.emails[category];
+            const emailGroup = emails.find(e => e.sender === sender);
+
+            if (!emailGroup) return;
+
+            let confirmMessage, successMessage, apiCall;
+
+            switch (action) {
+                case 'read':
+                    confirmMessage = `Mark ${emailGroup.count} emails from ${sender} as read?`;
+                    successMessage = 'Emails marked as read';
+                    apiCall = {
+                        removeLabelIds: ['UNREAD']
+                    };
+                    break;
+                case 'archive':
+                    confirmMessage = `Archive ${emailGroup.count} emails from ${sender}?`;
+                    successMessage = 'Emails archived';
+                    apiCall = {
+                        removeLabelIds: ['INBOX']
+                    };
+                    break;
+                case 'delete':
+                    confirmMessage = `Delete ${emailGroup.count} emails from ${sender}?`;
+                    successMessage = 'Emails moved to trash';
+                    apiCall = {
+                        addLabelIds: ['TRASH']
+                    };
+                    break;
+                default:
+                    return;
+            }
+
+            Swal.fire({
+                title: confirmMessage,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: action.charAt(0).toUpperCase() + action.slice(1),
+                cancelButtonText: 'Cancel',
+                reverseButtons: true
+            }).then(result => {
+                if (result.isConfirmed) {
+                    showLoading(true);
+
+                    // Process in batches of 100 (Gmail API limit)
+                    const batchSize = 100;
+                    const batches = [];
+
+                    for (let i = 0; i < emailGroup.ids.length; i += batchSize) {
+                        batches.push(emailGroup.ids.slice(i, i + batchSize));
+                    }
+
+                    const promises = batches.map(batch => {
+                        return gapi.client.gmail.users.messages.batchModify({
+                            'userId': 'me',
+                            'ids': batch,
+                            ...apiCall
+                        });
+                    });
+
+                    Promise.all(promises)
+                        .then(() => {
+                            // Update local state
+                            if (action === 'archive' || action === 'delete') {
+                                state.emails[category] = emails.filter(e => e.sender !== sender);
+                            } else if (action === 'read') {
+                                emailGroup.isUnread = false;
+                            }
+
+                            sortEmails(category);
+                            updateUI(category);
+                            showLoading(false);
+                            Swal.fire('Success', successMessage, 'success');
+                        })
+                        .catch(error => {
+                            console.error(`Error ${action} emails:`, error);
+                            showError(`Failed to ${action} emails`);
+                            showLoading(false);
+                        });
+                }
+            });
+        }
+
+        // Handle bulk actions for current tab
+        function handleBulkAction(action) {
+            const category = state.currentTab;
+            const emails = state.emails[category];
+
+            if (emails.length === 0) {
+                Swal.fire('Info', 'No emails to process', 'info');
+                return;
+            }
+
+            const allIds = emails.flatMap(e => e.ids);
+            let confirmMessage, successMessage, apiCall;
+
+            switch (action) {
+                case 'markRead':
+                    confirmMessage = `Mark all ${allIds.length} emails in ${category} as read?`;
+                    successMessage = 'All emails marked as read';
+                    apiCall = {
+                        removeLabelIds: ['UNREAD']
+                    };
+                    break;
+                case 'archive':
+                    confirmMessage = `Archive all ${allIds.length} emails in ${category}?`;
+                    successMessage = 'All emails archived';
+                    apiCall = {
+                        removeLabelIds: ['INBOX']
+                    };
+                    break;
+                case 'delete':
+                    confirmMessage = `Delete all ${allIds.length} emails in ${category}?`;
+                    successMessage = 'All emails moved to trash';
+                    apiCall = {
+                        addLabelIds: ['TRASH']
+                    };
+                    break;
+                default:
+                    return;
+            }
+
+            Swal.fire({
+                title: confirmMessage,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: action === 'delete' ? 'Delete All' : 'Confirm',
+                cancelButtonText: 'Cancel',
+                reverseButtons: true,
+                confirmButtonColor: action === 'delete' ? '#d33' : undefined
+            }).then(result => {
+                if (result.isConfirmed) {
+                    showLoading(true);
+
+                    // Process in batches of 100 (Gmail API limit)
+                    const batchSize = 100;
+                    const batches = [];
+
+                    for (let i = 0; i < allIds.length; i += batchSize) {
+                        batches.push(allIds.slice(i, i + batchSize));
+                    }
+
+                    const promises = batches.map(batch => {
+                        return gapi.client.gmail.users.messages.batchModify({
+                            'userId': 'me',
+                            'ids': batch,
+                            ...apiCall
+                        });
+                    });
+
+                    Promise.all(promises)
+                        .then(() => {
+                            // Clear all emails for this category
+                            state.emails[category] = [];
+                            updateUI(category);
+                            showLoading(false);
+                            Swal.fire('Success', successMessage, 'success');
+                        })
+                        .catch(error => {
+                            console.error(`Error in bulk ${action}:`, error);
+                            showError(`Failed to ${action} all emails`);
+                            showLoading(false);
+                        });
+                }
+            });
+        }
+
+        // Show loading indicator
+        function showLoading(show) {
+            if (show) {
+                elements.loading.classList.remove('hidden');
+            } else {
+                elements.loading.classList.add('hidden');
+            }
+        }
+
+        // Show error message
+        function showError(message) {
+            Swal.fire({
+                title: 'Error',
+                text: message,
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+        }
+
+        // Initialize the app when Google API is loaded
+        function handleClientLoad() {
+            init();
+        }
+
+        // Load Google API
+        const script = document.createElement('script');
+        script.src = 'https://apis.google.com/js/api.js';
+        script.async = true;
+        script.defer = true;
+        script.onload = function () {
+            this.onload = function () { };
+            handleClientLoad();
+        };
+        script.onreadystatechange = function () {
+            if (this.readyState === 'complete') this.onload();
+        };
+        document.body.appendChild(script);
+    </script>
 </body>
 
 </html>
