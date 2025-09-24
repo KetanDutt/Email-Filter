@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -92,13 +93,15 @@
             background-color: rgba(255, 255, 255, 0.05);
         }
 
-        .form-control, .form-select {
+        .form-control,
+        .form-select {
             background-color: #2d2e31;
             border: 1px solid var(--bs-border-color);
             color: var(--bs-body-color);
         }
 
-        .form-control:focus, .form-select:focus {
+        .form-control:focus,
+        .form-select:focus {
             background-color: #2d2e31;
             border-color: #8ab4f8;
             color: var(--bs-body-color);
@@ -166,26 +169,28 @@
             .action-buttons {
                 flex-direction: column;
             }
-            
+
             .action-btn {
                 width: 100%;
             }
-            
+
             .email-sender {
                 max-width: 120px;
             }
         }
     </style>
 </head>
+
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg sticky-top">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="#">
-                <img src="https://ssl.gstatic.com/ui/v1/icons/mail/rfr/logo_gmail_lockup_default_1x_r5.png" alt="Gmail" height="30" class="me-2">
+                <img src="https://ssl.gstatic.com/ui/v1/icons/mail/rfr/logo_gmail_lockup_default_1x_r5.png" alt="Gmail"
+                    height="30" class="me-2">
                 <span class="fw-semibold">Gmail Manager Pro</span>
             </a>
-            
+
             <div class="d-flex align-items-center">
                 <div class="auth-buttons">
                     <button id="signout_button" class="btn btn-outline-primary btn-sm me-2" style="display: none;">
@@ -251,7 +256,8 @@
                 <div class="card">
                     <div class="card-body">
                         <label for="search-emails" class="form-label">Search Senders</label>
-                        <input id="search-emails" type="text" class="form-control" placeholder="Enter sender name or email">
+                        <input id="search-emails" type="text" class="form-control"
+                            placeholder="Enter sender name or email">
                     </div>
                 </div>
             </div>
@@ -330,8 +336,8 @@
     <script>
         // Configuration
         const config = {
-            CLIENT_ID: '697317709fh10.apps.googleusercontent.com',
-            API_KEY: 'AIzaSyANjFsqMx2VQ',
+            CLIENT_ID: "697317707162-a677q5u0naj9mmnia0e65qcgrjo9fh10.apps.googleusercontent.com",
+            API_KEY: "AIzaSyANjFshGIMaOip50aX9lFqrOa_gxqMx2VQ",
             DISCOVERY_DOCS: ["https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest"],
             SCOPES: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify'
         };
@@ -393,11 +399,11 @@
             }).then(() => {
                 // Set up auth listeners
                 gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
-                
+
                 // Handle initial auth state
                 const isSignedIn = gapi.auth2.getAuthInstance().isSignedIn.get();
                 updateSigninStatus(isSignedIn);
-                
+
                 // Set up click handlers
                 elements.authorizeButton.onclick = handleAuthClick;
                 elements.authorizeButtonPrompt.onclick = handleAuthClick;
@@ -407,7 +413,7 @@
                 elements.markAllRead.onclick = () => handleBulkAction('markRead');
                 elements.archiveAll.onclick = () => handleBulkAction('archive');
                 elements.deleteAll.onclick = () => handleBulkAction('delete');
-                
+
                 // Set up sorting
                 document.querySelectorAll('th[data-sort]').forEach(th => {
                     th.addEventListener('click', () => {
@@ -433,7 +439,7 @@
                 elements.controls.style.display = 'flex';
                 elements.emailsContainer.style.display = 'block';
                 elements.signinPrompt.style.display = 'none';
-                
+
                 // Initialize the app
                 resetAppState();
                 showLoading(true);
@@ -523,7 +529,7 @@
          */
         function loadEmails() {
             let query = '';
-            
+
             switch (state.currentFilter) {
                 case 'unread':
                     query = 'is:unread';
@@ -538,9 +544,9 @@
                 default:
                     query = '';
             }
-            
+
             showLoading(true);
-            
+
             gapi.client.gmail.users.messages.list({
                 'userId': 'me',
                 'maxResults': 500,
@@ -550,7 +556,7 @@
             }).then(response => {
                 state.emailCount = response.result.messages ? response.result.messages.length : 0;
                 state.nextPageToken = response.result.nextPageToken || "";
-                
+
                 if (state.emailCount > 0) {
                     processEmailBatch(response.result.messages);
                 } else {
@@ -577,10 +583,10 @@
                 }
                 return;
             }
-            
+
             const batch = gapi.client.newBatch();
             const batchSize = Math.min(messageIds.length, 100); // Limit batch size
-            
+
             for (let i = 0; i < batchSize; i++) {
                 batch.add(gapi.client.gmail.users.messages.get({
                     'userId': 'me',
@@ -589,14 +595,14 @@
                     'metadataHeaders': ['From']
                 }));
             }
-            
+
             batch.then(response => {
                 for (const key in response.result) {
                     if (response.result[key].status === 200) {
                         processEmail(response.result[key].result);
                     }
                 }
-                
+
                 // Process remaining messages
                 if (batchSize < messageIds.length) {
                     processEmailBatch(messageIds.slice(batchSize));
@@ -617,17 +623,17 @@
          */
         function processEmail(email) {
             state.totalEmailsProcessed++;
-            
+
             // Extract sender email
             let sender = '';
             const fromHeader = email.payload.headers.find(h => h.name === 'From');
             if (fromHeader) {
                 const fromValue = fromHeader.value;
-                sender = fromValue.includes('<') ? 
-                    fromValue.substring(fromValue.indexOf('<') + 1, fromValue.indexOf('>')) : 
+                sender = fromValue.includes('<') ?
+                    fromValue.substring(fromValue.indexOf('<') + 1, fromValue.indexOf('>')) :
                     fromValue;
             }
-            
+
             // Store email data
             state.allEmails.push({
                 id: email.id,
@@ -635,7 +641,7 @@
                 labels: email.labelIds,
                 isUnread: email.labelIds.includes('UNREAD')
             });
-            
+
             // Group by sender
             const existingGroup = state.emailGroups.find(g => g.sender === sender);
             if (existingGroup) {
@@ -652,7 +658,7 @@
                     emailIds: [email.id]
                 });
             }
-            
+
             // Update UI periodically
             if (state.totalEmailsProcessed % 10 === 0) {
                 updateUI();
@@ -673,7 +679,7 @@
             }).then(response => {
                 state.emailCount += response.result.messages ? response.result.messages.length : 0;
                 state.nextPageToken = response.result.nextPageToken || "";
-                
+
                 if (response.result.messages && response.result.messages.length > 0) {
                     processEmailBatch(response.result.messages);
                 } else {
@@ -696,16 +702,16 @@
                 state.sortField = field;
                 state.sortDirection = 'desc';
             }
-            
+
             // Update sort indicators
             document.querySelectorAll('th[data-sort]').forEach(th => {
                 th.querySelector('i').className = 'bi bi-arrow-down-up ms-1';
                 if (th.dataset.sort === state.sortField) {
-                    th.querySelector('i').className = state.sortDirection === 'asc' ? 
+                    th.querySelector('i').className = state.sortDirection === 'asc' ?
                         'bi bi-arrow-up ms-1' : 'bi bi-arrow-down ms-1';
                 }
             });
-            
+
             updateUI();
         }
 
@@ -717,32 +723,32 @@
             elements.totalEmails.textContent = state.allEmails.length.toLocaleString();
             elements.unreadEmails.textContent = state.allEmails.filter(e => e.isUnread).length.toLocaleString();
             elements.sendersCount.textContent = state.emailGroups.length.toLocaleString();
-            
+
             // Filter email groups based on search query
-            let filteredGroups = state.emailGroups.filter(group => 
+            let filteredGroups = state.emailGroups.filter(group =>
                 group.sender.toLowerCase().includes(state.searchQuery.toLowerCase())
             );
-            
+
             // Sort by current field and direction
             filteredGroups.sort((a, b) => {
                 let comparison = 0;
-                
+
                 if (state.sortField === 'sender') {
                     comparison = a.sender.localeCompare(b.sender);
                 } else if (state.sortField === 'count') {
                     comparison = a.count - b.count;
                 }
-                
+
                 return state.sortDirection === 'asc' ? comparison : -comparison;
             });
-            
+
             // Render email groups
             if (filteredGroups.length === 0) {
                 elements.emptyState.style.display = 'block';
                 elements.emailsTableBody.innerHTML = '';
             } else {
                 elements.emptyState.style.display = 'none';
-                
+
                 let html = '';
                 filteredGroups.forEach((group, index) => {
                     html += `
@@ -771,7 +777,7 @@
                         </tr>
                     `;
                 });
-                
+
                 elements.emailsTableBody.innerHTML = html;
             }
         }
@@ -799,7 +805,7 @@
         function markEmailsAsRead(groupIndex) {
             const filteredGroups = getFilteredGroups();
             const group = filteredGroups[groupIndex];
-            
+
             Swal.fire({
                 title: `Mark ${group.count} emails from ${group.sender} as read?`,
                 icon: 'question',
@@ -812,7 +818,7 @@
             }).then(result => {
                 if (result.isConfirmed) {
                     showLoading(true);
-                    
+
                     gapi.client.gmail.users.messages.batchModify({
                         'userId': 'me',
                         'ids': group.emailIds,
@@ -823,10 +829,10 @@
                             const email = state.allEmails.find(e => e.id === id);
                             if (email) email.isUnread = false;
                         });
-                        
+
                         // Update group unread count
                         group.unreadCount = 0;
-                        
+
                         updateUI();
                         showLoading(false);
                         Swal.fire({
@@ -851,7 +857,7 @@
         function archiveEmails(groupIndex) {
             const filteredGroups = getFilteredGroups();
             const group = filteredGroups[groupIndex];
-            
+
             Swal.fire({
                 title: `Archive ${group.count} emails from ${group.sender}?`,
                 text: 'Emails will be removed from your inbox but not deleted',
@@ -865,7 +871,7 @@
             }).then(result => {
                 if (result.isConfirmed) {
                     showLoading(true);
-                    
+
                     gapi.client.gmail.users.messages.batchModify({
                         'userId': 'me',
                         'ids': group.emailIds,
@@ -874,7 +880,7 @@
                         // Remove from local state
                         state.allEmails = state.allEmails.filter(e => !group.emailIds.includes(e.id));
                         state.emailGroups = state.emailGroups.filter(g => g.sender !== group.sender);
-                        
+
                         updateUI();
                         showLoading(false);
                         Swal.fire({
@@ -899,7 +905,7 @@
         function deleteEmails(groupIndex) {
             const filteredGroups = getFilteredGroups();
             const group = filteredGroups[groupIndex];
-            
+
             Swal.fire({
                 title: `Delete ${group.count} emails from ${group.sender}?`,
                 text: 'This action cannot be undone',
@@ -914,7 +920,7 @@
             }).then(result => {
                 if (result.isConfirmed) {
                     showLoading(true);
-                    
+
                     gapi.client.gmail.users.messages.batchModify({
                         'userId': 'me',
                         'ids': group.emailIds,
@@ -923,7 +929,7 @@
                         // Remove from local state
                         state.allEmails = state.allEmails.filter(e => !group.emailIds.includes(e.id));
                         state.emailGroups = state.emailGroups.filter(g => g.sender !== group.sender);
-                        
+
                         updateUI();
                         showLoading(false);
                         Swal.fire({
@@ -948,13 +954,13 @@
         function labelEmails(groupIndex) {
             const filteredGroups = getFilteredGroups();
             const group = filteredGroups[groupIndex];
-            
+
             // Create label options
             const labelOptions = state.labels
                 .filter(label => !label.id.startsWith('CATEGORY_') && label.id !== 'TRASH' && label.id !== 'SPAM')
                 .map(label => `<option value="${label.id}">${label.name}</option>`)
                 .join('');
-            
+
             Swal.fire({
                 title: `Label ${group.count} emails from ${group.sender}`,
                 html: `
@@ -976,7 +982,7 @@
             }).then(result => {
                 if (result.isConfirmed && result.value) {
                     showLoading(true);
-                    
+
                     gapi.client.gmail.users.messages.batchModify({
                         'userId': 'me',
                         'ids': group.emailIds,
@@ -1004,7 +1010,7 @@
          */
         function handleBulkAction(action) {
             const filteredGroups = getFilteredGroups();
-            
+
             if (filteredGroups.length === 0) {
                 Swal.fire({
                     title: 'Info',
@@ -1015,10 +1021,10 @@
                 });
                 return;
             }
-            
+
             const allIds = filteredGroups.flatMap(group => group.emailIds);
             let confirmMessage, successMessage, apiCall;
-            
+
             switch (action) {
                 case 'markRead':
                     confirmMessage = `Mark all ${allIds.length} emails as read?`;
@@ -1044,7 +1050,7 @@
                 default:
                     return;
             }
-            
+
             Swal.fire({
                 title: confirmMessage,
                 icon: 'warning',
@@ -1058,15 +1064,15 @@
             }).then(result => {
                 if (result.isConfirmed) {
                     showLoading(true);
-                    
+
                     // Process in batches of 100 (Gmail API limit)
                     const batchSize = 100;
                     const batches = [];
-                    
+
                     for (let i = 0; i < allIds.length; i += batchSize) {
                         batches.push(allIds.slice(i, i + batchSize));
                     }
-                    
+
                     const promises = batches.map(batch => {
                         return gapi.client.gmail.users.messages.batchModify({
                             'userId': 'me',
@@ -1074,14 +1080,14 @@
                             ...apiCall
                         });
                     });
-                    
+
                     Promise.all(promises)
                         .then(() => {
                             // Update local state based on action
                             if (action === 'archive' || action === 'delete') {
                                 // Remove all emails from state
                                 state.allEmails = state.allEmails.filter(e => !allIds.includes(e.id));
-                                state.emailGroups = state.emailGroups.filter(g => 
+                                state.emailGroups = state.emailGroups.filter(g =>
                                     !filteredGroups.some(fg => fg.sender === g.sender)
                                 );
                             } else if (action === 'markRead') {
@@ -1093,7 +1099,7 @@
                                     group.unreadCount = 0;
                                 });
                             }
-                            
+
                             updateUI();
                             showLoading(false);
                             Swal.fire({
@@ -1117,7 +1123,7 @@
          * Get filtered email groups based on current search query
          */
         function getFilteredGroups() {
-            return state.emailGroups.filter(group => 
+            return state.emailGroups.filter(group =>
                 group.sender.toLowerCase().includes(state.searchQuery.toLowerCase())
             );
         }
@@ -1127,14 +1133,15 @@
         script.src = 'https://apis.google.com/js/api.js';
         script.async = true;
         script.defer = true;
-        script.onload = function() {
-            this.onload = function() {};
+        script.onload = function () {
+            this.onload = function () { };
             handleClientLoad();
         };
-        script.onreadystatechange = function() {
+        script.onreadystatechange = function () {
             if (this.readyState === 'complete') this.onload();
         };
         document.body.appendChild(script);
     </script>
 </body>
+
 </html>
