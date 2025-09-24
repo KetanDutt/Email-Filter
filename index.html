@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="dark">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -93,15 +92,13 @@
             background-color: rgba(255, 255, 255, 0.05);
         }
 
-        .form-control,
-        .form-select {
+        .form-control, .form-select {
             background-color: #2d2e31;
             border: 1px solid var(--bs-border-color);
             color: var(--bs-body-color);
         }
 
-        .form-control:focus,
-        .form-select:focus {
+        .form-control:focus, .form-select:focus {
             background-color: #2d2e31;
             border-color: #8ab4f8;
             color: var(--bs-body-color);
@@ -165,32 +162,39 @@
             opacity: 0.5;
         }
 
+        .scope-warning {
+            background-color: #fef3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+
         @media (max-width: 768px) {
             .action-buttons {
                 flex-direction: column;
             }
-
+            
             .action-btn {
                 width: 100%;
             }
-
+            
             .email-sender {
                 max-width: 120px;
             }
         }
     </style>
 </head>
-
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg sticky-top">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="#">
-                <img src="https://ssl.gstatic.com/ui/v1/icons/mail/rfr/logo_gmail_lockup_default_1x_r5.png" alt="Gmail"
-                    height="30" class="me-2">
+                <img src="https://ssl.gstatic.com/ui/v1/icons/mail/rfr/logo_gmail_lockup_default_1x_r5.png" alt="Gmail" height="30" class="me-2">
                 <span class="fw-semibold">Gmail Manager Pro</span>
             </a>
-
+            
             <div class="d-flex align-items-center">
                 <div class="auth-buttons">
                     <button id="signout_button" class="btn btn-outline-primary btn-sm me-2" style="display: none;">
@@ -206,6 +210,13 @@
 
     <!-- Main Content -->
     <main class="container my-4">
+        <!-- Scope Warning -->
+        <div id="scope-warning" class="scope-warning" style="display: none;">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Authentication Issue:</strong> The app needs additional permissions to access your Gmail data. 
+            Please sign in again and make sure to grant all requested permissions.
+        </div>
+
         <!-- Stats Cards -->
         <div id="stats" class="row mb-4" style="display: none;">
             <div class="col-md-4 mb-3">
@@ -256,8 +267,7 @@
                 <div class="card">
                     <div class="card-body">
                         <label for="search-emails" class="form-label">Search Senders</label>
-                        <input id="search-emails" type="text" class="form-control"
-                            placeholder="Enter sender name or email">
+                        <input id="search-emails" type="text" class="form-control" placeholder="Enter sender name or email">
                     </div>
                 </div>
             </div>
@@ -318,6 +328,9 @@
                     <button id="authorize_button_prompt" class="btn btn-primary btn-lg">
                         <i class="bi bi-google me-2"></i> Sign In with Google
                     </button>
+                    <div class="mt-3">
+                        <small class="text-muted">This app requires access to your Gmail account to read and manage emails</small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -334,12 +347,13 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Configuration
+        // Configuration - Updated with proper scopes
         const config = {
             CLIENT_ID: "697317707162-a677q5u0naj9mmnia0e65qcgrjo9fh10.apps.googleusercontent.com",
             API_KEY: "AIzaSyANjFshGIMaOip50aX9lFqrOa_gxqMx2VQ",
             DISCOVERY_DOCS: ["https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest"],
-            SCOPES: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify'
+            // Updated scopes to include full Gmail access
+            SCOPES: 'https://mail.google.com/ https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.readonly'
         };
 
         // DOM Elements
@@ -361,7 +375,8 @@
             emptyState: document.getElementById('empty-state'),
             markAllRead: document.getElementById('mark-all-read'),
             archiveAll: document.getElementById('archive-all'),
-            deleteAll: document.getElementById('delete-all')
+            deleteAll: document.getElementById('delete-all'),
+            scopeWarning: document.getElementById('scope-warning')
         };
 
         // App State
@@ -377,33 +392,42 @@
             currentFilter: 'unread',
             searchQuery: '',
             sortField: 'count',
-            sortDirection: 'desc'
+            sortDirection: 'desc',
+            authError: false
         };
 
         /**
          * Initialize the app when the page loads
          */
         function handleClientLoad() {
+            // Load the Google API client library
             gapi.load('client:auth2', initClient);
         }
 
         /**
-         * Initialize the Google API client
+         * Initialize the Google API client with updated configuration
          */
         function initClient() {
+            console.log('Initializing Google API client...');
+            
             gapi.client.init({
                 apiKey: config.API_KEY,
                 clientId: config.CLIENT_ID,
                 discoveryDocs: config.DISCOVERY_DOCS,
-                scope: config.SCOPES
+                scope: config.SCOPES,
+                // Add prompt to force consent screen for new scopes
+                prompt: 'consent'
             }).then(() => {
+                console.log('Google API client initialized successfully');
+                
                 // Set up auth listeners
                 gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
-
+                
                 // Handle initial auth state
                 const isSignedIn = gapi.auth2.getAuthInstance().isSignedIn.get();
+                console.log('Initial sign-in status:', isSignedIn);
                 updateSigninStatus(isSignedIn);
-
+                
                 // Set up click handlers
                 elements.authorizeButton.onclick = handleAuthClick;
                 elements.authorizeButtonPrompt.onclick = handleAuthClick;
@@ -413,7 +437,7 @@
                 elements.markAllRead.onclick = () => handleBulkAction('markRead');
                 elements.archiveAll.onclick = () => handleBulkAction('archive');
                 elements.deleteAll.onclick = () => handleBulkAction('delete');
-
+                
                 // Set up sorting
                 document.querySelectorAll('th[data-sort]').forEach(th => {
                     th.addEventListener('click', () => {
@@ -424,6 +448,16 @@
             }).catch(error => {
                 console.error('Error initializing Google API client:', error);
                 showError('Failed to initialize. Please try again later.');
+                
+                // Show specific error for scope issues
+                if (error.error === 'idpiframe_initialization_failed') {
+                    elements.scopeWarning.style.display = 'block';
+                    elements.scopeWarning.innerHTML = `
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Initialization Error:</strong> There's an issue with the Google authentication setup. 
+                        This might be due to incorrect OAuth configuration or browser restrictions.
+                    `;
+                }
             });
         }
 
@@ -431,6 +465,8 @@
          * Handle sign-in status changes
          */
         function updateSigninStatus(isSignedIn) {
+            console.log('Sign-in status changed:', isSignedIn);
+            
             if (isSignedIn) {
                 elements.authorizeButton.style.display = 'none';
                 elements.authorizeButtonPrompt.style.display = 'none';
@@ -439,7 +475,46 @@
                 elements.controls.style.display = 'flex';
                 elements.emailsContainer.style.display = 'block';
                 elements.signinPrompt.style.display = 'none';
-
+                elements.scopeWarning.style.display = 'none';
+                
+                // Check if we have the required scopes
+                const authInstance = gapi.auth2.getAuthInstance();
+                const currentUser = authInstance.currentUser.get();
+                const grantedScopes = currentUser.getGrantedScopes();
+                
+                console.log('Granted scopes:', grantedScopes);
+                
+                // Check if we have sufficient Gmail scopes
+                if (!grantedScopes.includes('https://mail.google.com/') && 
+                    !grantedScopes.includes('https://www.googleapis.com/auth/gmail.modify')) {
+                    console.warn('Insufficient scopes granted. Requesting new permissions...');
+                    elements.scopeWarning.style.display = 'block';
+                    state.authError = true;
+                    
+                    // Offer to re-authenticate with correct scopes
+                    Swal.fire({
+                        title: 'Additional Permissions Required',
+                        text: 'This app needs additional permissions to access your Gmail data. Would you like to grant these permissions now?',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Grant Permissions',
+                        cancelButtonText: 'Cancel',
+                        background: '#1e1e1e',
+                        color: '#e8eaed'
+                    }).then(result => {
+                        if (result.isConfirmed) {
+                            // Sign out and sign in again to request new scopes
+                            handleSignoutClick();
+                            setTimeout(() => {
+                                handleAuthClick();
+                            }, 1000);
+                        }
+                    });
+                    return;
+                }
+                
+                state.authError = false;
+                
                 // Initialize the app
                 resetAppState();
                 showLoading(true);
@@ -454,14 +529,26 @@
                 elements.emailsContainer.style.display = 'none';
                 elements.signinPrompt.style.display = 'block';
                 elements.emailsTableBody.innerHTML = '';
+                elements.scopeWarning.style.display = 'none';
             }
         }
 
         /**
-         * Handle sign-in
+         * Handle sign-in with scope verification
          */
         function handleAuthClick() {
-            gapi.auth2.getAuthInstance().signIn();
+            console.log('Handling auth click...');
+            
+            // Use signIn with options to ensure we get the correct scopes
+            gapi.auth2.getAuthInstance().signIn({
+                prompt: 'consent',
+                scope: config.SCOPES
+            }).then(() => {
+                console.log('Sign-in successful');
+            }).catch(error => {
+                console.error('Sign-in error:', error);
+                showError('Failed to sign in. Please try again.');
+            });
         }
 
         /**
@@ -486,6 +573,7 @@
             state.allEmails = [];
             state.currentFilter = 'unread';
             state.searchQuery = '';
+            state.authError = false;
         }
 
         /**
@@ -511,25 +599,30 @@
         }
 
         /**
-         * Load user's labels
+         * Load user's labels with error handling
          */
         function loadLabels() {
             gapi.client.gmail.users.labels.list({
                 'userId': 'me'
             }).then(response => {
                 state.labels = response.result.labels || [];
-                console.log('Labels loaded:', state.labels);
+                console.log('Labels loaded:', state.labels.length);
             }).catch(error => {
                 console.error('Error loading labels:', error);
+                
+                // Check if it's an authentication error
+                if (error.status === 403) {
+                    handleAuthError('labels');
+                }
             });
         }
 
         /**
-         * Load emails based on current filter
+         * Load emails based on current filter with error handling
          */
         function loadEmails() {
             let query = '';
-
+            
             switch (state.currentFilter) {
                 case 'unread':
                     query = 'is:unread';
@@ -544,19 +637,21 @@
                 default:
                     query = '';
             }
-
+            
             showLoading(true);
-
+            
             gapi.client.gmail.users.messages.list({
                 'userId': 'me',
-                'maxResults': 500,
+                'maxResults': 100, // Reduced from 500 to avoid quota issues
                 'labelIds': ['INBOX'],
                 'q': query,
                 'includeSpamTrash': false
             }).then(response => {
                 state.emailCount = response.result.messages ? response.result.messages.length : 0;
                 state.nextPageToken = response.result.nextPageToken || "";
-
+                
+                console.log(`Found ${state.emailCount} emails with filter: ${state.currentFilter}`);
+                
                 if (state.emailCount > 0) {
                     processEmailBatch(response.result.messages);
                 } else {
@@ -565,8 +660,49 @@
                 }
             }).catch(error => {
                 console.error('Error loading emails:', error);
-                showError('Failed to load emails. Please try again.');
+                
+                // Check if it's an authentication error
+                if (error.status === 403) {
+                    handleAuthError('emails');
+                } else {
+                    showError('Failed to load emails. Please try again.');
+                }
                 showLoading(false);
+            });
+        }
+
+        /**
+         * Handle authentication errors
+         */
+        function handleAuthError(resource) {
+            console.error(`Authentication error accessing ${resource}`);
+            state.authError = true;
+            elements.scopeWarning.style.display = 'block';
+            
+            Swal.fire({
+                title: 'Authentication Issue',
+                html: `
+                    <p>This app doesn't have permission to access your ${resource}.</p>
+                    <p>This is usually because:</p>
+                    <ul class="text-start">
+                        <li>You didn't grant all requested permissions</li>
+                        <li>The app needs to be re-authenticated</li>
+                    </ul>
+                    <p>Would you like to sign in again to grant the necessary permissions?</p>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sign In Again',
+                cancelButtonText: 'Cancel',
+                background: '#1e1e1e',
+                color: '#e8eaed'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    handleSignoutClick();
+                    setTimeout(() => {
+                        handleAuthClick();
+                    }, 1000);
+                }
             });
         }
 
@@ -583,26 +719,26 @@
                 }
                 return;
             }
-
+            
             const batch = gapi.client.newBatch();
-            const batchSize = Math.min(messageIds.length, 100); // Limit batch size
-
+            const batchSize = Math.min(messageIds.length, 50); // Reduced batch size
+            
             for (let i = 0; i < batchSize; i++) {
                 batch.add(gapi.client.gmail.users.messages.get({
                     'userId': 'me',
                     'id': messageIds[i].id,
                     'format': 'metadata',
-                    'metadataHeaders': ['From']
+                    'metadataHeaders': ['From', 'Subject']
                 }));
             }
-
+            
             batch.then(response => {
                 for (const key in response.result) {
                     if (response.result[key].status === 200) {
                         processEmail(response.result[key].result);
                     }
                 }
-
+                
                 // Process remaining messages
                 if (batchSize < messageIds.length) {
                     processEmailBatch(messageIds.slice(batchSize));
@@ -623,17 +759,17 @@
          */
         function processEmail(email) {
             state.totalEmailsProcessed++;
-
+            
             // Extract sender email
-            let sender = '';
+            let sender = 'Unknown Sender';
             const fromHeader = email.payload.headers.find(h => h.name === 'From');
             if (fromHeader) {
                 const fromValue = fromHeader.value;
-                sender = fromValue.includes('<') ?
-                    fromValue.substring(fromValue.indexOf('<') + 1, fromValue.indexOf('>')) :
+                sender = fromValue.includes('<') ? 
+                    fromValue.substring(fromValue.indexOf('<') + 1, fromValue.indexOf('>')) : 
                     fromValue;
             }
-
+            
             // Store email data
             state.allEmails.push({
                 id: email.id,
@@ -641,7 +777,7 @@
                 labels: email.labelIds,
                 isUnread: email.labelIds.includes('UNREAD')
             });
-
+            
             // Group by sender
             const existingGroup = state.emailGroups.find(g => g.sender === sender);
             if (existingGroup) {
@@ -658,7 +794,7 @@
                     emailIds: [email.id]
                 });
             }
-
+            
             // Update UI periodically
             if (state.totalEmailsProcessed % 10 === 0) {
                 updateUI();
@@ -1128,20 +1264,43 @@
             );
         }
 
-        // Load Google API
-        const script = document.createElement('script');
-        script.src = 'https://apis.google.com/js/api.js';
-        script.async = true;
-        script.defer = true;
-        script.onload = function () {
-            this.onload = function () { };
-            handleClientLoad();
-        };
-        script.onreadystatechange = function () {
-            if (this.readyState === 'complete') this.onload();
-        };
-        document.body.appendChild(script);
+        /**
+         * Load Google Identity Services (GIS) as fallback for deprecated gapi.auth2
+         */
+        function loadGIS() {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://accounts.google.com/gsi/client';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        // Initialize the app when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Try to load the Google API with fallback
+            const gapiScript = document.createElement('script');
+            gapiScript.src = 'https://apis.google.com/js/api.js';
+            gapiScript.async = true;
+            gapiScript.defer = true;
+            gapiScript.onload = function() {
+                console.log('Google API script loaded');
+                // Give it a moment to initialize
+                setTimeout(handleClientLoad, 100);
+            };
+            gapiScript.onerror = function() {
+                console.error('Failed to load Google API, trying GIS fallback');
+                loadGIS().then(() => {
+                    console.log('GIS loaded as fallback');
+                    // Implement GIS authentication here if needed
+                }).catch(err => {
+                    console.error('Failed to load any Google authentication library');
+                    showError('Failed to load required authentication libraries. Please check your internet connection.');
+                });
+            };
+            document.head.appendChild(gapiScript);
+        });
     </script>
 </body>
-
 </html>
