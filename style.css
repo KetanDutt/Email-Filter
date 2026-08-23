@@ -1,0 +1,176 @@
+        :root {
+            --bs-primary-rgb: 66, 133, 244;
+            --bs-secondary-rgb: 232, 234, 237;
+            --bs-success-rgb: 52, 168, 83;
+            --bs-danger-rgb: 234, 67, 53;
+            --bs-warning-rgb: 251, 188, 5;
+            --bs-dark-rgb: 18, 18, 18;
+            --bs-light-rgb: 245, 245, 245;
+            --bs-body-bg: #121212;
+            --bs-body-color: #e8eaed;
+            --bs-border-color: #3c4043;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bs-body-bg);
+            color: var(--bs-body-color);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background-color: rgba(32, 33, 36, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--bs-border-color);
+        }
+
+        .card {
+            background-color: #1e1e1e;
+            border: 1px solid var(--bs-border-color);
+            border-radius: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, #1a73e8, #4285f4);
+            color: white;
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: #1a73e8;
+            border-color: #1a73e8;
+        }
+
+        .btn-primary:hover {
+            background-color: #1669d9;
+            border-color: #1669d9;
+        }
+
+        .btn-outline-primary {
+            color: #8ab4f8;
+            border-color: #8ab4f8;
+        }
+
+        .btn-outline-primary:hover {
+            background-color: #8ab4f8;
+            color: #202124;
+        }
+
+        .table {
+            color: var(--bs-body-color);
+            --bs-table-bg: transparent;
+            --bs-table-border-color: var(--bs-border-color);
+        }
+
+        .table th {
+            border-bottom: 1px solid var(--bs-border-color);
+            font-weight: 500;
+        }
+
+        .table td {
+            border-bottom: 1px solid var(--bs-border-color);
+        }
+
+        .table tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .form-control, .form-select {
+            background-color: #2d2e31;
+            border: 1px solid var(--bs-border-color);
+            color: var(--bs-body-color);
+        }
+
+        .form-control:focus, .form-select:focus {
+            background-color: #2d2e31;
+            border-color: #8ab4f8;
+            color: var(--bs-body-color);
+            box-shadow: 0 0 0 0.25rem rgba(138, 180, 248, 0.25);
+        }
+
+        .badge {
+            font-weight: 500;
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+        }
+
+        .email-sender {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .tab-content {
+            min-height: 400px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #9aa0a6;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .scope-warning {
+            background-color: #fef3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-btn {
+                width: 100%;
+            }
+            
+            .email-sender {
+                max-width: 120px;
+            }
+        }
+    </style>

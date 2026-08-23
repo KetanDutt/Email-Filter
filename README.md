@@ -1,10 +1,28 @@
-# Email-Filter
+# Gmail Manager Pro
 
-A Simple Site to Manage emails on Gmail. The Site shows All Emails in Sorted Form an then you can quickly mark bundles of Emails Trash or Spam with one click.
+A powerful, fast, and completely client-side tool to bulk-manage your Gmail inbox. Say goodbye to the 50-email-per-page limit in the native Gmail client.
 
-![image](https://user-images.githubusercontent.com/30174373/136919313-c44454fc-93a8-4cec-80a5-36f388e0fee1.png)
+## Features
+- **Bulk Grouping:** Automatically groups emails by sender so you can identify the biggest sources of clutter.
+- **Bulk Actions:** Delete, Archive, Mark as Read, or Label thousands of emails from a single sender in one click.
+- **Smart Quota Management:** Built-in throttling and chunking to ensure you never crash the Gmail API rate limits, even for inboxes with 100,000+ emails.
+- **Privacy First:** 100% client-side application. No servers are involved, and your emails never leave your browser.
+- **Installable PWA:** Install directly to your desktop or mobile home screen.
 
+## Installation / Setup
+1. Clone the repository.
+2. Serve the directory using any static web server. For example:
+   ```bash
+   npx serve .
+   ```
+   Or using Python:
+   ```bash
+   python -m http.server 8000
+   ```
+3. Open `http://localhost:8000` in your browser.
 
-a Simple site to test the working of Gmail API.
+## Architecture
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for technical details on API usage, chunking, and authentication flow.
 
-visit on [ketandutt.github.io/Email-Filter](https://ketandutt.github.io/Email-Filter/)
+## License
+MIT License
