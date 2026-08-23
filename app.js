@@ -159,11 +159,9 @@
                     tab.addEventListener('click', (e) => {
                         // Update active styling
                         document.querySelectorAll('#categoryTab .nav-link').forEach(t => {
-                            t.classList.remove('active', 'text-light', 'border-bottom', 'border-primary', 'border-2');
-                            t.classList.add('text-secondary');
+                            t.classList.remove('active');
                         });
-                        e.currentTarget.classList.remove('text-secondary');
-                        e.currentTarget.classList.add('active', 'text-light', 'border-bottom', 'border-primary', 'border-2');
+                        e.currentTarget.classList.add('active');
                         
                         // Update state and reload
                         state.currentCategory = e.currentTarget.dataset.category;
@@ -296,8 +294,8 @@
                 text: message,
                 icon: 'error',
                 confirmButtonText: 'OK',
-                background: '#1e1e1e',
-                color: '#e8eaed'
+                background: '#ffffff',
+                color: '#202124'
             });
         }
 
@@ -327,19 +325,22 @@
             let query = '';
             
             switch (state.currentFilter) {
-                case 'unread':
-                    query = 'is:unread';
-                    break;
-                case 'read':
-                    query = 'is:read';
-                    break;
-                case 'starred':
-                    query = 'is:starred';
-                    break;
-                case 'all':
-                default:
-                    query = '';
+                case 'unread': query = 'is:unread'; break;
+                case 'read': query = 'is:read'; break;
+                case 'starred': query = 'is:starred'; break;
+                case 'all': default: query = '';
             }
+
+            // Map category label to search term
+            const categoryMap = {
+                'CATEGORY_PERSONAL': 'category:primary',
+                'CATEGORY_PROMOTIONS': 'category:promotions',
+                'CATEGORY_SOCIAL': 'category:social',
+                'CATEGORY_UPDATES': 'category:updates'
+            };
+            const categoryQuery = categoryMap[state.currentCategory] || 'category:primary';
+            
+            query = query ? `${query} ${categoryQuery}` : categoryQuery;
             
             showLoading(true);
             state.syncCanceled = false;
@@ -347,7 +348,7 @@
             gapi.client.gmail.users.messages.list({
                 'userId': 'me',
                 'maxResults': 100, // Reduced from 500 to avoid quota issues
-                'labelIds': ['INBOX', state.currentCategory],
+                'labelIds': ['INBOX'],
                 'q': query,
                 'includeSpamTrash': false
             }).then(response => {
@@ -404,8 +405,8 @@
                 showCancelButton: true,
                 confirmButtonText: 'Sign In Again',
                 cancelButtonText: 'Cancel',
-                background: '#1e1e1e',
-                color: '#e8eaed'
+                background: '#ffffff',
+                color: '#202124'
             }).then(result => {
                 if (result.isConfirmed) {
                     handleSignoutClick();
@@ -534,12 +535,29 @@
          * Load next page of emails
          */
         function loadNextPage() {
+            let query = '';
+            switch (state.currentFilter) {
+                case 'unread': query = 'is:unread'; break;
+                case 'read': query = 'is:read'; break;
+                case 'starred': query = 'is:starred'; break;
+                case 'all': default: query = '';
+            }
+
+            const categoryMap = {
+                'CATEGORY_PERSONAL': 'category:primary',
+                'CATEGORY_PROMOTIONS': 'category:promotions',
+                'CATEGORY_SOCIAL': 'category:social',
+                'CATEGORY_UPDATES': 'category:updates'
+            };
+            const categoryQuery = categoryMap[state.currentCategory] || 'category:primary';
+            query = query ? `${query} ${categoryQuery}` : categoryQuery;
+
             gapi.client.gmail.users.messages.list({
                 'userId': 'me',
                 'maxResults': 100,
                 'pageToken': state.nextPageToken,
-                'labelIds': ['INBOX', state.currentCategory],
-                'q': state.currentFilter === 'unread' ? 'is:unread' : '',
+                'labelIds': ['INBOX'],
+                'q': query,
                 'includeSpamTrash': false
             }).then(response => {
                 state.emailCount += response.result.messages ? response.result.messages.length : 0;
@@ -671,8 +689,8 @@
                 confirmButtonText: 'Mark as Read',
                 cancelButtonText: 'Cancel',
                 reverseButtons: true,
-                background: '#1e1e1e',
-                color: '#e8eaed'
+                background: '#ffffff',
+                color: '#202124'
             }).then(result => {
                 if (result.isConfirmed) {
                     showLoading(true);
@@ -695,8 +713,8 @@
                             title: 'Success',
                             text: 'Emails marked as read',
                             icon: 'success',
-                            background: '#1e1e1e',
-                            color: '#e8eaed'
+                            background: '#ffffff',
+                            color: '#202124'
                         });
                     }).catch(error => {
                         console.error('Error marking emails as read:', error);
@@ -722,8 +740,8 @@
                 confirmButtonText: 'Archive',
                 cancelButtonText: 'Cancel',
                 reverseButtons: true,
-                background: '#1e1e1e',
-                color: '#e8eaed'
+                background: '#ffffff',
+                color: '#202124'
             }).then(result => {
                 if (result.isConfirmed) {
                     showLoading(true);
@@ -741,8 +759,8 @@
                             title: 'Success',
                             text: 'Emails archived',
                             icon: 'success',
-                            background: '#1e1e1e',
-                            color: '#e8eaed'
+                            background: '#ffffff',
+                            color: '#202124'
                         });
                     }).catch(error => {
                         console.error('Error archiving emails:', error);
@@ -769,8 +787,8 @@
                 confirmButtonText: 'Delete',
                 cancelButtonText: 'Cancel',
                 reverseButtons: true,
-                background: '#1e1e1e',
-                color: '#e8eaed'
+                background: '#ffffff',
+                color: '#202124'
             }).then(result => {
                 if (result.isConfirmed) {
                     showLoading(true);
@@ -788,8 +806,8 @@
                             title: 'Deleted',
                             text: 'Emails moved to trash',
                             icon: 'success',
-                            background: '#1e1e1e',
-                            color: '#e8eaed'
+                            background: '#ffffff',
+                            color: '#202124'
                         });
                     }).catch(error => {
                         console.error('Error deleting emails:', error);
@@ -825,8 +843,8 @@
                 confirmButtonText: 'Apply Label',
                 cancelButtonText: 'Cancel',
                 reverseButtons: true,
-                background: '#1e1e1e',
-                color: '#e8eaed',
+                background: '#ffffff',
+                color: '#202124',
                 preConfirm: () => {
                     const select = document.getElementById('label-select');
                     return select.value;
@@ -843,8 +861,8 @@
                             title: 'Success',
                             text: 'Label applied to emails',
                             icon: 'success',
-                            background: '#1e1e1e',
-                            color: '#e8eaed'
+                            background: '#ffffff',
+                            color: '#202124'
                         });
                     }).catch(error => {
                         console.error('Error applying label:', error);
@@ -866,8 +884,8 @@
                     title: 'Info',
                     text: 'No emails to process',
                     icon: 'info',
-                    background: '#1e1e1e',
-                    color: '#e8eaed'
+                    background: '#ffffff',
+                    color: '#202124'
                 });
                 return;
             }
@@ -909,8 +927,8 @@
                 cancelButtonText: 'Cancel',
                 reverseButtons: true,
                 confirmButtonColor: action === 'delete' ? '#d33' : undefined,
-                background: '#1e1e1e',
-                color: '#e8eaed'
+                background: '#ffffff',
+                color: '#202124'
             }).then(result => {
                 if (result.isConfirmed) {
                     showLoading(true);
@@ -939,8 +957,8 @@
                                 title: 'Success',
                                 text: successMessage,
                                 icon: 'success',
-                                background: '#1e1e1e',
-                                color: '#e8eaed'
+                                background: '#ffffff',
+                                color: '#202124'
                             });
                         })
                         .catch(error => {
