@@ -1,23 +1,4 @@
         // Configuration - Updated with proper scopes
-        });
-                // Set up category tabs
-                document.querySelectorAll('#categoryTab .nav-link').forEach(tab => {
-                    tab.addEventListener('click', (e) => {
-                        // Update active styling
-                        document.querySelectorAll('#categoryTab .nav-link').forEach(t => {
-                            t.classList.remove('active', 'text-light', 'border-bottom', 'border-primary', 'border-2');
-                            t.classList.add('text-secondary');
-                        });
-                        e.currentTarget.classList.remove('text-secondary');
-                        e.currentTarget.classList.add('active', 'text-light', 'border-bottom', 'border-primary', 'border-2');
-                        
-                        // Update state and reload
-                        state.currentCategory = e.currentTarget.dataset.category;
-                        resetAppState();
-                        loadEmails();
-                    });
-                });
-        // Configuration - Updated with proper scopes
         const config = {
             CLIENT_ID: "697317707162-a0991aiahhctrppk3s00po8o0dusi87f.apps.googleusercontent.com",
             DISCOVERY_DOCS: ["https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest"],
@@ -178,10 +159,19 @@
                     });
                 });
                 
+                // Set up select all checkbox
+                const selectAllGroups = document.getElementById('select-all-groups');
+                if (selectAllGroups) {
+                    selectAllGroups.addEventListener('change', (e) => {
+                        document.querySelectorAll('.group-checkbox').forEach(cb => {
+                            cb.checked = e.target.checked;
+                        });
+                    });
+                }
+                
                 updateSigninStatus(false);
             }
         }
-                    Swal.fire({
         /**
          * Handle sign-in status changes
          */
@@ -294,8 +284,8 @@
                 text: message,
                 icon: 'error',
                 confirmButtonText: 'OK',
-                background: '#ffffff',
-                color: '#202124'
+
+
             });
         }
 
@@ -405,8 +395,8 @@
                 showCancelButton: true,
                 confirmButtonText: 'Sign In Again',
                 cancelButtonText: 'Cancel',
-                background: '#ffffff',
-                color: '#202124'
+
+
             }).then(result => {
                 if (result.isConfirmed) {
                     handleSignoutClick();
@@ -629,6 +619,9 @@
                 filteredGroups.forEach((group, index) => {
                     html += `
                         <tr>
+                            <td>
+                                <input class="form-check-input group-checkbox" type="checkbox" data-index="${index}">
+                            </td>
                             <td class="email-sender" title="${group.sender}">${group.sender}</td>
                             <td>
                                 <span class="badge bg-primary rounded-pill">${group.count}</span>
@@ -655,6 +648,11 @@
                 });
 
                 elements.emailsTableBody.innerHTML = html;
+                
+                const selectAllGroups = document.getElementById('select-all-groups');
+                if (selectAllGroups) {
+                    selectAllGroups.checked = false;
+                }
             }
         }
 
@@ -689,8 +687,8 @@
                 confirmButtonText: 'Mark as Read',
                 cancelButtonText: 'Cancel',
                 reverseButtons: true,
-                background: '#ffffff',
-                color: '#202124'
+
+
             }).then(result => {
                 if (result.isConfirmed) {
                     showLoading(true);
@@ -713,8 +711,8 @@
                             title: 'Success',
                             text: 'Emails marked as read',
                             icon: 'success',
-                            background: '#ffffff',
-                            color: '#202124'
+
+
                         });
                     }).catch(error => {
                         console.error('Error marking emails as read:', error);
@@ -740,8 +738,8 @@
                 confirmButtonText: 'Archive',
                 cancelButtonText: 'Cancel',
                 reverseButtons: true,
-                background: '#ffffff',
-                color: '#202124'
+
+
             }).then(result => {
                 if (result.isConfirmed) {
                     showLoading(true);
@@ -759,8 +757,8 @@
                             title: 'Success',
                             text: 'Emails archived',
                             icon: 'success',
-                            background: '#ffffff',
-                            color: '#202124'
+
+
                         });
                     }).catch(error => {
                         console.error('Error archiving emails:', error);
@@ -787,8 +785,8 @@
                 confirmButtonText: 'Delete',
                 cancelButtonText: 'Cancel',
                 reverseButtons: true,
-                background: '#ffffff',
-                color: '#202124'
+
+
             }).then(result => {
                 if (result.isConfirmed) {
                     showLoading(true);
@@ -806,8 +804,8 @@
                             title: 'Deleted',
                             text: 'Emails moved to trash',
                             icon: 'success',
-                            background: '#ffffff',
-                            color: '#202124'
+
+
                         });
                     }).catch(error => {
                         console.error('Error deleting emails:', error);
@@ -843,8 +841,8 @@
                 confirmButtonText: 'Apply Label',
                 cancelButtonText: 'Cancel',
                 reverseButtons: true,
-                background: '#ffffff',
-                color: '#202124',
+
+
                 preConfirm: () => {
                     const select = document.getElementById('label-select');
                     return select.value;
@@ -861,8 +859,8 @@
                             title: 'Success',
                             text: 'Label applied to emails',
                             icon: 'success',
-                            background: '#ffffff',
-                            color: '#202124'
+
+
                         });
                     }).catch(error => {
                         console.error('Error applying label:', error);
@@ -874,43 +872,49 @@
         }
 
         /**
-         * Handle bulk actions for all visible emails
+         * Handle bulk actions for selected emails
          */
         function handleBulkAction(action) {
             const filteredGroups = getFilteredGroups();
+            const checkedBoxes = document.querySelectorAll('.group-checkbox:checked');
 
-            if (filteredGroups.length === 0) {
+            if (checkedBoxes.length === 0) {
                 Swal.fire({
                     title: 'Info',
-                    text: 'No emails to process',
-                    icon: 'info',
-                    background: '#ffffff',
-                    color: '#202124'
+                    text: 'Please select at least one sender to process',
+                    icon: 'info'
                 });
                 return;
             }
 
-            const allIds = filteredGroups.flatMap(group => group.emailIds);
+            let allIds = [];
+            checkedBoxes.forEach(cb => {
+                const index = parseInt(cb.dataset.index);
+                if (filteredGroups[index]) {
+                    allIds = allIds.concat(filteredGroups[index].emailIds);
+                }
+            });
+
             let confirmMessage, successMessage, apiCall;
 
             switch (action) {
                 case 'markRead':
-                    confirmMessage = `Mark all ${allIds.length} emails as read?`;
-                    successMessage = 'All emails marked as read';
+                    confirmMessage = `Mark ${allIds.length} selected emails as read?`;
+                    successMessage = 'Selected emails marked as read';
                     apiCall = {
                         removeLabelIds: ['UNREAD']
                     };
                     break;
                 case 'archive':
-                    confirmMessage = `Archive all ${allIds.length} emails?`;
-                    successMessage = 'All emails archived';
+                    confirmMessage = `Archive ${allIds.length} selected emails?`;
+                    successMessage = 'Selected emails archived';
                     apiCall = {
                         removeLabelIds: ['INBOX']
                     };
                     break;
                 case 'delete':
-                    confirmMessage = `Delete all ${allIds.length} emails?`;
-                    successMessage = 'All emails moved to trash';
+                    confirmMessage = `Delete ${allIds.length} selected emails?`;
+                    successMessage = 'Selected emails moved to trash';
                     apiCall = {
                         addLabelIds: ['TRASH']
                     };
@@ -923,49 +927,28 @@
                 title: confirmMessage,
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonText: action === 'delete' ? 'Delete All' : 'Confirm',
-                cancelButtonText: 'Cancel',
-                reverseButtons: true,
-                confirmButtonColor: action === 'delete' ? '#d33' : undefined,
-                background: '#ffffff',
-                color: '#202124'
+                confirmButtonText: 'Yes, do it!',
+                cancelButtonText: 'Cancel'
             }).then(result => {
                 if (result.isConfirmed) {
                     showLoading(true);
-                    executeBatchModify(allIds, apiCall)
-                        .then(() => {
-                            // Update local state based on action
-                            if (action === 'archive' || action === 'delete') {
-                                // Remove all emails from state
-                                state.allEmails = state.allEmails.filter(e => !allIds.includes(e.id));
-                                state.emailGroups = state.emailGroups.filter(g =>
-                                    !filteredGroups.some(fg => fg.sender === g.sender)
-                                );
-                            } else if (action === 'markRead') {
-                                // Mark all emails as read
-                                state.allEmails.forEach(e => {
-                                    if (allIds.includes(e.id)) e.isUnread = false;
-                                });
-                                filteredGroups.forEach(group => {
-                                    group.unreadCount = 0;
-                                });
-                            }
 
-                            updateUI();
-                            showLoading(false);
-                            Swal.fire({
-                                title: 'Success',
-                                text: successMessage,
-                                icon: 'success',
-                                background: '#ffffff',
-                                color: '#202124'
-                            });
-                        })
-                        .catch(error => {
-                            console.error(`Error in bulk ${action}:`, error);
-                            showError(`Failed to ${action} all emails`);
-                            showLoading(false);
+                    executeBatchModify(allIds, apiCall).then(() => {
+                        showLoading(false);
+                        Swal.fire({
+                            title: 'Success',
+                            text: successMessage,
+                            icon: 'success'
                         });
+                        
+                        // Reload data to reflect changes
+                        loadLabels();
+                        loadEmails();
+                    }).catch(error => {
+                        console.error(`Error performing ${action}:`, error);
+                        showError(`Failed to complete action`);
+                        showLoading(false);
+                    });
                 }
             });
         }
@@ -994,6 +977,25 @@
 
         // Initialize the app when the page loads
         document.addEventListener('DOMContentLoaded', function() {
+            // Theme toggling
+            const themeToggle = document.getElementById('theme-toggle');
+            if (themeToggle) {
+                // Load saved theme
+                const savedTheme = localStorage.getItem('theme') || 'light';
+                document.documentElement.setAttribute('data-bs-theme', savedTheme);
+                themeToggle.innerHTML = savedTheme === 'dark' ? '<i class="bi bi-sun"></i>' : '<i class="bi bi-moon"></i>';
+                
+                // Toggle theme on click
+                themeToggle.addEventListener('click', () => {
+                    const currentTheme = document.documentElement.getAttribute('data-bs-theme');
+                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    
+                    document.documentElement.setAttribute('data-bs-theme', newTheme);
+                    localStorage.setItem('theme', newTheme);
+                    themeToggle.innerHTML = newTheme === 'dark' ? '<i class="bi bi-sun"></i>' : '<i class="bi bi-moon"></i>';
+                });
+            }
+
             // Load the Google API client library
             const gapiScript = document.createElement('script');
             gapiScript.src = 'https://apis.google.com/js/api.js';
