@@ -1,28 +1,50 @@
-# Architecture Document
+# Architecture
 
-## Overview
-Gmail Manager Pro is a client-side Single Page Application (SPA) designed to help users efficiently manage and bulk-clean their Gmail inbox. 
+Gmail Manager Pro is a static single-page app. There is no application backend.
 
-## Technology Stack
-- **Frontend Core:** HTML5, CSS3, Vanilla JavaScript (ES6+).
-- **UI Framework:** Bootstrap 5 (CSS & Icons).
-- **Alerts & Modals:** SweetAlert2.
-- **APIs:** 
-  - Google Identity Services (GIS) for authentication.
-  - Gmail REST API for reading and mutating emails.
+## Stack
 
-## File Structure
-- `index.html`: The main entry point, containing the HTML layout and UI components.
-- `style.css`: Custom styling, overriding Bootstrap variables for a dark theme.
-- `app.js`: Application logic, state management, and API interactions.
-- `sw.js`: Service worker to enable Progressive Web App (PWA) offline asset caching.
-- `manifest.json`: Web app manifest for installability.
+- HTML, CSS, and vanilla JavaScript
+- Bootstrap 5.3.3 CSS and Bootstrap Icons, vendored under `vendor/`
+- Google Identity Services (GIS) token client for OAuth
+- Gmail REST API via `fetch` (no `gapi` client)
 
-## API Quota Management
-The Gmail API imposes strict rate limits (e.g., 250 quota units per second). To prevent `403 Rate Limit Exceeded` errors:
-1. **Fetching:** `messages.get` requests are throttled with a 1.5-second delay between batches of 50 to safely stay under limits.
-2. **Mutations:** Bulk actions (Archive, Delete, Mark Read) use the `batchModify` endpoint. Large sets of IDs are automatically chunked into arrays of 1000 and processed sequentially.
-3. **Retry Logic:** If a rate limit is exceeded, requests are caught, paused for 2-5 seconds, and automatically retried.
+## Files
 
-## Authentication Flow
-The application uses the modern Google Identity Services `TokenClient` to request short-lived OAuth 2.0 access tokens. Once a token is retrieved, it is passed to the legacy `gapi.client` using `gapi.client.setToken()`.
+| File | Role |
+| --- | --- |
+| `index.html` | Layout, landmark structure, demo/sign-in chrome |
+| `style.css` | Theme, spacing, dark mode |
+| `config.js` | Public OAuth client ID and message cap |
+| `core.js` | Pure helpers shared with Node tests |
+| `app.js` | UI state, OAuth, sync, mutations |
+| `sw.js` | Optional app-shell cache; never caches Gmail/OAuth |
+| `manifest.json` | PWA install metadata |
+| `tests/` | Unit tests and optional Playwright specs |
+
+## Data flow
+
+1. GIS returns a short-lived access token into tab memory.
+2. `users.messages.list` pages inbox IDs for the current filter and category (`in:inbox` plus Gmail search operators).
+3. `users.messages.get?format=metadata` loads `From` and `labelIds` only.
+4. Messages are stored in a `Map` keyed by ID so refresh cannot duplicate rows.
+5. The UI groups, filters, and paginates that in-memory set.
+6. Mutations call `users.messages.batchModify` in chunks of 1,000 IDs. Local labels update **only after** a chunk succeeds.
+
+## Quota and retries
+
+- Metadata fetches run in small parallel batches with a short pause, staying under typical per-user Gmail unit rates.
+- HTTP 429, 5xx, and Gmail `rateLimitExceeded` / `userRateLimitExceeded` / `backendError` retry up to five times with exponential backoff and `Retry-After`.
+- 401, 404, and ordinary 403 are not retried in a loop.
+- Users can abort an in-flight sync; aborted requests are ignored even if they complete late.
+
+## Security properties
+
+- Mailbox fields are assigned with `textContent` / DOM APIs, never `innerHTML`.
+- Tokens are not written to `localStorage`, cookies, or IndexedDB.
+- The service worker allowlists public assets by URL and skips `googleapis.com` / `accounts.google.com`.
+- Closing the tab or signing out drops the session.
+
+## Why `gmail.modify`
+
+Archive, Trash, mark-read, and label changes require modify access. The app never requests `mail.google.com` (full mail) or `gmail.readonly` in addition. Restricted scopes still mean you must follow Google’s Limited Use rules if you publish the client ID widely.

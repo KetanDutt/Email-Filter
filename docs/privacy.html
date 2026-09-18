@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>Privacy — Gmail Manager Pro</title>
+    <link rel="stylesheet" href="../vendor/bootstrap.min.css">
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <main class="container my-5" style="max-width: 720px;">
+        <p><a href="../index.html">← Back to the app</a></p>
+        <h1>Privacy</h1>
+        <p>Gmail Manager Pro runs in your browser. This page describes what the code in this project does when you sign in.</p>
+        <h2 class="h4 mt-4">Data accessed</h2>
+        <p>Sign-in requests the Google scope <code>https://www.googleapis.com/auth/gmail.modify</code>. The app reads message IDs, label IDs, and the <code>From</code> header only. It does not load email bodies or attachments.</p>
+        <h2 class="h4 mt-4">Use</h2>
+        <p>Metadata is grouped by sender so you can mark messages read, archive them, apply an existing label, or move them to Trash. An optional CSV download is generated locally.</p>
+        <h2 class="h4 mt-4">Storage and sharing</h2>
+        <ul>
+            <li>There is no application server for mailbox data.</li>
+            <li>This project does not include analytics.</li>
+            <li>Access tokens stay in memory and are cleared when you sign out.</li>
+            <li>A theme preference may be saved in <code>localStorage</code>.</li>
+        </ul>
+        <h2 class="h4 mt-4">Your controls</h2>
+        <p>Sign out in the app, close the tab, and/or remove access at <a href="https://myaccount.google.com/permissions">Google Account permissions</a>.</p>
+        <p class="text-muted">If someone else is hosting this app, they are the operator named on Google’s consent screen and must publish their own contact details.</p>
+    </main>
+</body>
+</html>

@@ -1,1041 +1,577 @@
-        // Configuration - Updated with proper scopes
-        const config = {
-            CLIENT_ID: "697317707162-a0991aiahhctrppk3s00po8o0dusi87f.apps.googleusercontent.com",
-            DISCOVERY_DOCS: ["https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest"],
-            // Updated scopes to include full Gmail access
-            SCOPES: 'https://mail.google.com/ https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.readonly'
-        };
+/* Gmail Manager Pro — mailbox data and tokens stay in this tab only. */
+'use strict';
 
-        // DOM Elements
-        const elements = {
-            authorizeButton: document.getElementById('authorize_button'),
-            authorizeButtonPrompt: document.getElementById('authorize_button_prompt'),
-            signoutButton: document.getElementById('signout_button'),
-            stats: document.getElementById('stats'),
-            controls: document.getElementById('controls'),
-            emailsContainer: document.getElementById('emails-container'),
-            signinPrompt: document.getElementById('signin-prompt'),
-            loading: document.getElementById('loading'),
-            totalEmails: document.getElementById('total-emails'),
-            unreadEmails: document.getElementById('unread-emails'),
-            sendersCount: document.getElementById('senders-count'),
-            filterType: document.getElementById('filter-type'),
-            searchEmails: document.getElementById('search-emails'),
-            emailsTableBody: document.getElementById('emails-table-body'),
-            emptyState: document.getElementById('empty-state'),
-            markAllRead: document.getElementById('mark-all-read'),
-            archiveAll: document.getElementById('archive-all'),
-            deleteAll: document.getElementById('delete-all'),
-            scopeWarning: document.getElementById('scope-warning'),
-            stopSyncBtn: document.getElementById('stop-sync-btn')
-        };
+const $ = id => document.getElementById(id);
+const core = window.MailCore;
+const config = window.EMAIL_FILTER_CONFIG || {};
+const scope = 'https://www.googleapis.com/auth/gmail.modify';
+const pageSize = 50;
+const state = {
+    messages: new Map(),
+    labels: [],
+    selected: new Set(),
+    groups: [],
+    page: 0,
+    sort: 'count',
+    direction: -1,
+    category: 'CATEGORY_PERSONAL',
+    busy: false,
+    demo: false,
+    token: null,
+    expires: 0,
+    controller: null,
+    generation: 0
+};
+let tokenClient;
 
-        // App State
-        const state = {
-            isLoading: false,
-            labels: [],
-            nextPageToken: "",
-            emailCount: 0,
-            totalEmailsProcessed: 0,
-            senders: [],
-            emailGroups: [],
-            allEmails: [],
-            currentCategory: 'CATEGORY_PERSONAL',
-            currentFilter: 'unread',
-            searchQuery: '',
-            sortField: 'count',
-            sortDirection: 'desc',
-            authError: false,
-            syncCanceled: false
-        };
-        /**
-         * Utility to chunk arrays
-         */
-        function chunkArray(array, size) {
-            const chunks = [];
-            for (let i = 0; i < array.length; i += size) {
-                chunks.push(array.slice(i, i + size));
-            }
-            return chunks;
+const pause = (ms, signal) => new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new DOMException('Canceled', 'AbortError'));
+    const abort = () => {
+        clearTimeout(timer);
+        reject(new DOMException('Canceled', 'AbortError'));
+    };
+    const timer = setTimeout(() => {
+        signal?.removeEventListener('abort', abort);
+        resolve();
+    }, ms);
+    signal?.addEventListener('abort', abort, { once: true });
+});
+
+function status(text, tone = 'info') {
+    const banner = $('sync-status');
+    banner.textContent = text;
+    banner.dataset.tone = tone;
+}
+
+function signedIn(value) {
+    $('app-shell').style.display = value ? '' : 'none';
+    $('signin-prompt').style.display = value ? 'none' : '';
+    $('authorize_button').style.display = value ? 'none' : '';
+    $('signout_button').style.display = value ? '' : 'none';
+}
+
+function busy(value, cancelable = false) {
+    state.busy = value;
+    document.body.setAttribute('aria-busy', String(value));
+    $('loading').style.display = value ? 'flex' : 'none';
+    $('stop-sync-btn').style.display = cancelable ? '' : 'none';
+    $('stop-sync-btn').disabled = false;
+    $('loading-text').textContent = cancelable ? 'Syncing inbox metadata…' : 'Applying changes…';
+    document.querySelectorAll('#controls input, #controls select, #categoryTab button, #refresh-button, #demo-button, #export-csv, #select-matching').forEach(el => {
+        el.disabled = value;
+    });
+}
+
+async function api(path, { method = 'GET', body, signal } = {}) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+        if (!state.token || Date.now() >= state.expires) {
+            const error = new Error('Your session expired. Sign out and sign in again to continue.');
+            error.status = 401;
+            throw error;
         }
-        /**
-         * Helper to execute batch modify in chunks of 1000 (Gmail limit)
-         */
-        async function executeBatchModify(ids, apiCall) {
-            const batches = chunkArray(ids, 1000);
-            for (let i = 0; i < batches.length; i++) {
-                await gapi.client.gmail.users.messages.batchModify({
-                    'userId': 'me',
-                    'ids': batches[i],
-                    ...apiCall
-                });
-            }
+        const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/${path}`, {
+            method,
+            signal,
+            headers: {
+                Authorization: `Bearer ${state.token}`,
+                ...(body ? { 'Content-Type': 'application/json' } : {})
+            },
+            ...(body ? { body: JSON.stringify(body) } : {})
+        });
+        const data = core.parseBody(await response.text());
+        if (response.ok) return data;
+        if (attempt < 4 && core.retryable(response.status, data.error)) {
+            await pause(core.retryDelayMs(attempt, response.headers.get('Retry-After'), Date.now(), Math.random() * 500), signal);
+            continue;
+        }
+        const error = new Error(
+            response.status === 401
+                ? 'Your session expired. Sign out and sign in again.'
+                : `Gmail request failed (${response.status}). ${data.error?.message || 'Please try again.'}`
+        );
+        error.status = response.status;
+        throw error;
+    }
+}
+
+function render() {
+    const messages = core.filterMessages(state.messages, $('filter-type').value, state.category);
+    const groups = core.groupMessages(messages);
+    $('total-emails').textContent = messages.size.toLocaleString();
+    $('unread-emails').textContent = [...messages.values()].filter(message => message.labels.includes('UNREAD')).length.toLocaleString();
+    $('senders-count').textContent = groups.length.toLocaleString();
+
+    const search = $('search-emails').value.trim().toLowerCase();
+    state.groups = core.sortGroups(
+        groups.filter(group => group.sender.includes(search)),
+        state.sort,
+        state.direction
+    );
+
+    const valid = new Set(state.groups.map(group => group.sender));
+    for (const sender of state.selected) {
+        if (!valid.has(sender)) state.selected.delete(sender);
+    }
+
+    state.page = Math.min(state.page, Math.max(0, Math.ceil(state.groups.length / pageSize) - 1));
+    const pageGroups = state.groups.slice(state.page * pageSize, (state.page + 1) * pageSize);
+    const fragment = document.createDocumentFragment();
+
+    for (const group of pageGroups) {
+        const row = document.createElement('tr');
+        const selectCell = row.insertCell();
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'form-check-input group-checkbox';
+        checkbox.checked = state.selected.has(group.sender);
+        checkbox.setAttribute('aria-label', `Select ${group.sender}`);
+        checkbox.onchange = () => {
+            checkbox.checked ? state.selected.add(group.sender) : state.selected.delete(group.sender);
+            updateSelection();
+        };
+        selectCell.append(checkbox);
+
+        const sender = row.insertCell();
+        sender.textContent = group.sender;
+        sender.className = 'email-sender';
+        sender.title = group.sender;
+
+        const count = row.insertCell();
+        count.innerHTML = '';
+        const total = document.createElement('span');
+        total.className = 'badge text-bg-primary rounded-pill';
+        total.textContent = group.ids.length.toLocaleString();
+        count.append(total);
+        if (group.unread) {
+            const unread = document.createElement('span');
+            unread.className = 'badge text-bg-warning rounded-pill ms-1';
+            unread.textContent = `${group.unread} unread`;
+            count.append(unread);
         }
 
-
-
-        let tokenClient;
-        let gapiInited = false;
-        let gisInited = false;
-
-        /**
-         * Initialize the Google API client
-         */
-        async function initializeGapiClient() {
-            console.log('Initializing Google API client...');
-            try {
-                await gapi.client.init({
-                    discoveryDocs: config.DISCOVERY_DOCS
-                });
-                console.log('Google API client initialized successfully');
-                gapiInited = true;
-                maybeEnableButtons();
-            } catch (error) {
-                console.error('Error initializing Google API client:', error);
-                showError('Failed to initialize Google API client.');
-            }
+        const actions = row.insertCell();
+        actions.className = 'action-buttons';
+        for (const [action, label, danger] of [
+            ['markRead', 'Mark read', false],
+            ['archive', 'Archive', false],
+            ['trash', 'Trash', true],
+            ['label', 'Label', false]
+        ]) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `btn btn-sm ${danger ? 'btn-outline-danger' : 'btn-outline-primary'} action-btn`;
+            button.textContent = label;
+            button.onclick = () => mutate(action, group.ids);
+            actions.append(button);
         }
+        fragment.append(row);
+    }
 
-        /**
-         * Initialize GIS token client
-         */
-        function initializeGisClient() {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: config.CLIENT_ID,
-                scope: config.SCOPES,
-                callback: (tokenResponse) => {
-                    if (tokenResponse && tokenResponse.access_token) {
-                        gapi.client.setToken({ access_token: tokenResponse.access_token });
-                        updateSigninStatus(true, tokenResponse);
-                    }
-                }
+    $('emails-table-body').replaceChildren(fragment);
+    $('empty-state').style.display = state.groups.length ? 'none' : '';
+    $('pagination-bar').style.display = state.groups.length ? '' : 'none';
+    $('page-info').textContent = state.groups.length
+        ? `Senders ${state.page * pageSize + 1}–${Math.min((state.page + 1) * pageSize, state.groups.length)} of ${state.groups.length}`
+        : 'No matching senders';
+    $('previous-page').disabled = state.page === 0;
+    $('next-page').disabled = (state.page + 1) * pageSize >= state.groups.length;
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+        const active = th.dataset.sort === state.sort;
+        th.setAttribute('aria-sort', active ? (state.direction === 1 ? 'ascending' : 'descending') : 'none');
+        const icon = th.querySelector('i');
+        if (icon) {
+            icon.className = active
+                ? `bi ${state.direction === 1 ? 'bi-arrow-up' : 'bi-arrow-down'} ms-1`
+                : 'bi bi-arrow-down-up ms-1';
+        }
+    });
+    updateSelection();
+}
+
+function updateSelection() {
+    const selected = state.groups.filter(group => state.selected.has(group.sender));
+    const count = selected.reduce((total, group) => total + group.ids.length, 0);
+    $('selection-summary').textContent = `${selected.length} senders · ${count} messages selected`;
+    for (const id of ['mark-all-read', 'archive-all', 'delete-all']) {
+        $(id).disabled = !selected.length || state.busy;
+    }
+    $('select-matching').disabled = !state.groups.length || state.busy;
+    $('export-csv').disabled = !state.groups.length || state.busy;
+    const page = state.groups.slice(state.page * pageSize, (state.page + 1) * pageSize);
+    const pageSelected = page.filter(group => state.selected.has(group.sender)).length;
+    $('select-all-groups').checked = page.length > 0 && pageSelected === page.length;
+    $('select-all-groups').indeterminate = pageSelected > 0 && pageSelected < page.length;
+}
+
+async function sync() {
+    if (state.busy) return;
+    if (state.demo) {
+        state.selected.clear();
+        render();
+        status('Demo data only. No Google account is connected.');
+        return;
+    }
+    if (!state.token) return;
+
+    const generation = ++state.generation;
+    const controller = new AbortController();
+    state.controller = controller;
+    state.messages.clear();
+    state.selected.clear();
+    state.page = 0;
+    render();
+    busy(true, true);
+
+    let nextPageToken;
+    let skipped = 0;
+    let limited = false;
+    const limit = core.messageLimit(config.maxMessages);
+
+    try {
+        state.labels = (await api('labels', { signal: controller.signal })).labels || [];
+        do {
+            const params = new URLSearchParams({
+                maxResults: '500',
+                q: core.queryFor($('filter-type').value, state.category),
+                fields: 'messages/id,nextPageToken',
+                includeSpamTrash: 'false',
+                ...(nextPageToken ? { pageToken: nextPageToken } : {})
             });
-            gisInited = true;
-            maybeEnableButtons();
+            const page = await api(`messages?${params}`, { signal: controller.signal });
+            const ids = page.messages || [];
+            for (const chunk of core.chunks(ids, 24)) {
+                const remaining = limit - state.messages.size;
+                if (remaining <= 0) {
+                    limited = true;
+                    break;
+                }
+                const work = chunk.slice(0, remaining);
+                for (const batch of core.chunks(work, 8)) {
+                    await Promise.all(batch.map(async ({ id }) => {
+                        try {
+                            const message = await api(
+                                `messages/${encodeURIComponent(id)}?format=metadata&metadataHeaders=From&fields=id,labelIds,payload/headers`,
+                                { signal: controller.signal }
+                            );
+                            if (generation === state.generation && !controller.signal.aborted) {
+                                state.messages.set(id, core.normalize(message));
+                            }
+                        } catch (error) {
+                            if (error.status === 404) skipped++;
+                            else throw error;
+                        }
+                    }));
+                }
+                $('loading-text').textContent = `Loaded ${state.messages.size.toLocaleString()} of up to ${limit.toLocaleString()} messages…`;
+                render();
+                if (work.length < chunk.length) {
+                    limited = true;
+                    break;
+                }
+                await pause(200, controller.signal);
+            }
+            nextPageToken = page.nextPageToken;
+            if (state.messages.size >= limit && nextPageToken) limited = true;
+        } while (nextPageToken && !limited);
+
+        const extra = skipped ? `; ${skipped} disappeared during sync` : '';
+        status(
+            limited
+                ? `Partial results: ${limit.toLocaleString()}-message safety limit reached. Narrow the filter. ${state.messages.size.toLocaleString()} messages loaded${extra}.`
+                : `Sync complete. ${state.messages.size.toLocaleString()} messages loaded${extra}.`,
+            limited ? 'warning' : 'info'
+        );
+    } catch (error) {
+        controller.abort();
+        if (generation === state.generation) {
+            const stopped = error.name === 'AbortError';
+            status(
+                `${stopped ? 'Sync stopped.' : error.message} Partial results: ${state.messages.size.toLocaleString()} messages loaded. Refresh to retry.`,
+                stopped ? 'warning' : 'danger'
+            );
+        }
+    } finally {
+        if (generation === state.generation) {
+            state.controller = null;
+            busy(false);
+            render();
+        }
+    }
+}
+
+async function chooseLabel() {
+    const labels = state.labels.filter(label => label.type === 'user');
+    if (!labels.length) {
+        window.alert('Create a custom label in Gmail, then refresh to load it here.');
+        return null;
+    }
+    const dialog = $('label-dialog');
+    const select = $('label-select');
+    select.replaceChildren();
+    for (const label of labels) {
+        const option = document.createElement('option');
+        option.value = label.id;
+        option.textContent = label.name;
+        select.append(option);
+    }
+    return new Promise(resolve => {
+        dialog.addEventListener('close', () => resolve(dialog.returnValue === 'apply' ? select.value : null), { once: true });
+        dialog.showModal();
+        select.focus();
+    });
+}
+
+async function mutate(action, ids) {
+    if (state.busy) return;
+    state.busy = true;
+    let completed = 0;
+    const uniqueIds = [...new Set(ids)];
+    try {
+        let change;
+        if (action === 'label') {
+            const label = await chooseLabel();
+            if (!label) return;
+            change = { addLabelIds: [label] };
+        } else {
+            change = {
+                markRead: { removeLabelIds: ['UNREAD'] },
+                archive: { removeLabelIds: ['INBOX'] },
+                trash: { addLabelIds: ['TRASH'], removeLabelIds: ['INBOX'] }
+            }[action];
+        }
+        if (!change || !uniqueIds.length) return;
+
+        const description = { markRead: 'Mark as read', archive: 'Archive', trash: 'Move to Trash', label: 'Label' }[action];
+        const warning = action === 'trash' ? '\nGmail normally permanently deletes Trash after 30 days.' : '';
+        if (!window.confirm(`${state.demo ? 'DEMO: ' : ''}${description}: ${uniqueIds.length.toLocaleString()} loaded messages?\nOnly selected, loaded messages are affected.${warning}`)) {
+            return;
         }
 
-        /**
-        /**
-         * Check if both libraries are loaded before enabling features
-         */
-        function maybeEnableButtons() {
-            if (gapiInited && gisInited) {
-                // Set up click handlers
-                elements.authorizeButton.onclick = handleAuthClick;
-                elements.authorizeButtonPrompt.onclick = handleAuthClick;
-                elements.signoutButton.onclick = handleSignoutClick;
-                elements.filterType.onchange = handleFilterChange;
-                elements.searchEmails.oninput = handleSearchInput;
-                elements.markAllRead.onclick = () => handleBulkAction('markRead');
-                elements.archiveAll.onclick = () => handleBulkAction('archive');
-                elements.deleteAll.onclick = () => handleBulkAction('delete');
-                elements.stopSyncBtn.onclick = () => {
-                    state.syncCanceled = true;
-                    elements.stopSyncBtn.disabled = true;
-                    elements.stopSyncBtn.innerHTML = '<i class="bi bi-hourglass me-1"></i> Stopping...';
-                };
-                
-                // Set up category tabs
-                document.querySelectorAll('#categoryTab .nav-link').forEach(tab => {
-                    tab.addEventListener('click', (e) => {
-                        // Update active styling
-                        document.querySelectorAll('#categoryTab .nav-link').forEach(t => {
-                            t.classList.remove('active');
-                        });
-                        e.currentTarget.classList.add('active');
-                        
-                        // Update state and reload
-                        state.currentCategory = e.currentTarget.dataset.category;
-                        resetAppState();
-                        loadEmails();
-                    });
-                });
-                
-                // Set up sorting
-                document.querySelectorAll('th[data-sort]').forEach(th => {
-                    th.addEventListener('click', () => {
-                        const field = th.dataset.sort;
-                        toggleSort(field);
-                    });
-                });
-                
-                // Set up select all checkbox
-                const selectAllGroups = document.getElementById('select-all-groups');
-                if (selectAllGroups) {
-                    selectAllGroups.addEventListener('change', (e) => {
-                        document.querySelectorAll('.group-checkbox').forEach(cb => {
-                            cb.checked = e.target.checked;
-                        });
-                    });
-                }
-                
-                updateSigninStatus(false);
+        busy(true);
+        for (const batch of core.chunks(uniqueIds, 1000)) {
+            if (!state.demo) {
+                await api('messages/batchModify', { method: 'POST', body: { ids: batch, ...change } });
             }
+            core.applyChange(state.messages, batch, change);
+            completed += batch.length;
+            $('loading-text').textContent = `Updated ${completed.toLocaleString()} of ${uniqueIds.length.toLocaleString()} messages…`;
+            if (!state.demo) await pause(300);
         }
-        /**
-         * Handle sign-in status changes
-         */
-        function updateSigninStatus(isSignedIn, tokenResponse = null) {
-            console.log('Sign-in status changed:', isSignedIn);
-            
-            if (isSignedIn) {
-                elements.authorizeButton.style.display = 'none';
-                elements.authorizeButtonPrompt.style.display = 'none';
-                elements.signoutButton.style.display = 'block';
-                elements.stats.style.display = 'flex';
-                elements.controls.style.display = 'flex';
-                document.getElementById('category-tabs').style.display = 'block';
-                elements.emailsContainer.style.display = 'block';
-                elements.signinPrompt.style.display = 'none';
-                elements.scopeWarning.style.display = 'none';
-                
-                // If token response has scopes, verify them
-                if (tokenResponse && tokenResponse.scope) {
-                    const hasRequiredScopes = google.accounts.oauth2.hasGrantedAllScopes(
-                        tokenResponse,
-                        'https://mail.google.com/',
-                        'https://www.googleapis.com/auth/gmail.modify',
-                        'https://www.googleapis.com/auth/gmail.readonly'
-                    );
-                    
-                    if (!hasRequiredScopes) {
-                        handleAuthError('full Gmail access');
+        state.selected.clear();
+        status(`${state.demo ? 'Demo: ' : ''}${description} completed for ${completed.toLocaleString()} messages.`);
+    } catch (error) {
+        status(
+            `Action incomplete: ${completed} of ${uniqueIds.length} confirmed updated. ${error.message} Refresh before retrying; the last request may have reached Gmail.`,
+            'danger'
+        );
+    } finally {
+        busy(false);
+        render();
+    }
+}
+
+function signout() {
+    if (state.busy) return;
+    const token = state.token;
+    state.generation++;
+    state.controller?.abort();
+    state.token = null;
+    state.expires = 0;
+    state.demo = false;
+    state.messages.clear();
+    state.labels = [];
+    state.selected.clear();
+    render();
+    signedIn(false);
+    status('Signed out. Session data cleared.');
+    if (token && window.google?.accounts?.oauth2?.revoke) {
+        google.accounts.oauth2.revoke(token, () => {});
+    }
+}
+
+function demo() {
+    if (state.busy) return;
+    state.generation++;
+    state.controller?.abort();
+    state.demo = true;
+    state.token = null;
+    state.messages = core.demoMailbox();
+    state.labels = [{ id: 'demo-label', name: 'Keep for later', type: 'user' }];
+    state.selected.clear();
+    state.page = 0;
+    signedIn(true);
+    render();
+    status('Demo data only. Actions change this sample session, not a real inbox.');
+}
+
+function exportCsv() {
+    if (!state.groups.length) return;
+    const blob = new Blob([core.toCsv(state.groups)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'gmail-senders.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+function initAuth() {
+    if (!config.clientId) {
+        status('Setup needed: add your public OAuth client ID in config.js. You can explore the demo now.', 'warning');
+        return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.onerror = () => status('Google sign-in could not load. Check your connection or content blocker and reload.', 'danger');
+    script.onload = () => {
+        try {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: config.clientId,
+                scope,
+                error_callback: () => status('Sign-in was closed or blocked. Please try again.', 'warning'),
+                callback: response => {
+                    if (response.error || !response.access_token) {
+                        status('Sign-in failed. Please try again.', 'danger');
                         return;
                     }
-                }
-                
-                // Load initial data
-                loadLabels();
-                loadEmails();
-            } else {
-                elements.authorizeButton.style.display = 'block';
-                elements.authorizeButtonPrompt.style.display = 'block';
-                elements.signoutButton.style.display = 'none';
-                elements.stats.style.display = 'none';
-                elements.controls.style.display = 'none';
-                document.getElementById('category-tabs').style.display = 'none';
-                elements.emailsContainer.style.display = 'none';
-                elements.signinPrompt.style.display = 'block';
-                elements.emailsTableBody.innerHTML = '';
-                elements.scopeWarning.style.display = 'none';
-            }
-        }
-        /**
-         * Handle sign-in with scope verification
-         */
-        function handleAuthClick() {
-            console.log('Handling auth click...');
-            tokenClient.requestAccessToken({prompt: 'consent'});
-        }
-
-        /**
-         * Handle sign-out
-         */
-        function handleSignoutClick() {
-            const token = gapi.client.getToken();
-            if (token !== null) {
-                google.accounts.oauth2.revoke(token.access_token, () => {
-                    gapi.client.setToken('');
-                    resetAppState();
-                    updateSigninStatus(false);
-                });
-            } else {
-                resetAppState();
-                updateSigninStatus(false);
-            }
-        }
-
-        /**
-         * Reset the app state
-         */
-        function resetAppState() {
-            state.isLoading = false;
-            state.labels = [];
-            state.nextPageToken = "";
-            state.emailCount = 0;
-            state.totalEmailsProcessed = 0;
-            state.senders = [];
-            state.emailGroups = [];
-            state.allEmails = [];
-            state.authError = false;
-        }
-
-        /**
-         * Show or hide loading indicator
-         */
-        function showLoading(show) {
-            state.isLoading = show;
-            elements.loading.style.display = show ? 'flex' : 'none';
-            if (show) {
-                elements.stopSyncBtn.style.display = 'inline-block';
-                elements.stopSyncBtn.disabled = false;
-                elements.stopSyncBtn.innerHTML = '<i class="bi bi-stop-circle me-1"></i> Stop Sync';
-            } else {
-                elements.stopSyncBtn.style.display = 'none';
-            }
-        }
-
-        /**
-         * Show error message
-         */
-        function showError(message) {
-            Swal.fire({
-                title: 'Error',
-                text: message,
-                icon: 'error',
-                confirmButtonText: 'OK',
-
-
-            });
-        }
-
-        /**
-         * Load user's labels with error handling
-         */
-        function loadLabels() {
-            gapi.client.gmail.users.labels.list({
-                'userId': 'me'
-            }).then(response => {
-                state.labels = response.result.labels || [];
-                console.log('Labels loaded:', state.labels.length);
-            }).catch(error => {
-                console.error('Error loading labels:', error);
-                
-                // Check if it's an authentication error
-                if (error.status === 403) {
-                    handleAuthError('labels');
-                }
-            });
-        }
-
-        /**
-         * Load emails based on current filter with error handling
-         */
-        function loadEmails() {
-            let query = '';
-            
-            switch (state.currentFilter) {
-                case 'unread': query = 'is:unread'; break;
-                case 'read': query = 'is:read'; break;
-                case 'starred': query = 'is:starred'; break;
-                case 'all': default: query = '';
-            }
-
-            // Map category label to search term
-            const categoryMap = {
-                'CATEGORY_PERSONAL': 'category:primary',
-                'CATEGORY_PROMOTIONS': 'category:promotions',
-                'CATEGORY_SOCIAL': 'category:social',
-                'CATEGORY_UPDATES': 'category:updates'
-            };
-            const categoryQuery = categoryMap[state.currentCategory] || 'category:primary';
-            
-            query = query ? `${query} ${categoryQuery}` : categoryQuery;
-            
-            showLoading(true);
-            state.syncCanceled = false;
-            
-            gapi.client.gmail.users.messages.list({
-                'userId': 'me',
-                'maxResults': 100, // Reduced from 500 to avoid quota issues
-                'labelIds': ['INBOX'],
-                'q': query,
-                'includeSpamTrash': false
-            }).then(response => {
-                state.emailCount = response.result.messages ? response.result.messages.length : 0;
-                state.nextPageToken = response.result.nextPageToken || "";
-                
-                console.log(`Found ${state.emailCount} emails with filter: ${state.currentFilter}`);
-                
-                if (state.emailCount > 0) {
-                    processEmailBatch(response.result.messages);
-                } else {
-                    updateUI();
-                    showLoading(false);
-                }
-            }).catch(error => {
-                console.error('Error loading emails:', error);
-                
-                // Check if it's an authentication error or rate limit
-                if (error.status === 403 && error.result && error.result.error && error.result.error.reason === 'rateLimitExceeded') {
-                    console.warn('Rate limit exceeded during initial list. Waiting before retrying...');
-                    setTimeout(() => {
-                        loadEmails();
-                    }, 5000);
-                } else if (error.status === 403) {
-                    handleAuthError('emails');
-                    showLoading(false);
-                } else {
-                    showError('Failed to load emails. Please try again.');
-                    showLoading(false);
-                }
-            });
-        }
-
-        /**
-         * Handle authentication errors
-         */
-        function handleAuthError(resource) {
-            console.error(`Authentication error accessing ${resource}`);
-            state.authError = true;
-            elements.scopeWarning.style.display = 'block';
-            
-            Swal.fire({
-                title: 'Authentication Issue',
-                html: `
-                    <p>This app doesn't have permission to access your ${resource}.</p>
-                    <p>This is usually because:</p>
-                    <ul class="text-start">
-                        <li>You didn't grant all requested permissions</li>
-                        <li>The app needs to be re-authenticated</li>
-                    </ul>
-                    <p>Would you like to sign in again to grant the necessary permissions?</p>
-                `,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Sign In Again',
-                cancelButtonText: 'Cancel',
-
-
-            }).then(result => {
-                if (result.isConfirmed) {
-                    handleSignoutClick();
-                    setTimeout(() => {
-                        handleAuthClick();
-                    }, 1000);
-                }
-            });
-        }
-
-        /**
-         * Process a batch of email IDs
-         */
-        function processEmailBatch(messageIds) {
-            if (!messageIds || messageIds.length === 0) {
-                if (state.nextPageToken) {
-                    loadNextPage();
-                } else {
-                    updateUI();
-                    showLoading(false);
-                }
-                return;
-            }
-            
-            const batch = gapi.client.newBatch();
-            const batchSize = Math.min(messageIds.length, 50); // Reduced batch size
-            
-            for (let i = 0; i < batchSize; i++) {
-                batch.add(gapi.client.gmail.users.messages.get({
-                    'userId': 'me',
-                    'id': messageIds[i].id,
-                    'format': 'metadata',
-                    'metadataHeaders': ['From', 'Subject']
-                }));
-            }
-            
-            batch.then(response => {
-                for (const key in response.result) {
-                    if (response.result[key].status === 200) {
-                        processEmail(response.result[key].result);
+                    if (!google.accounts.oauth2.hasGrantedAllScopes(response, scope)) {
+                        google.accounts.oauth2.revoke(response.access_token, () => {});
+                        status('Gmail modify permission is required. Sign in and grant access.', 'warning');
+                        return;
                     }
-                }
-                
-                // Check if user cancelled sync
-                if (state.syncCanceled) {
-                    updateUI();
-                    showLoading(false);
-                    return;
-                }
-
-                // Process remaining messages with a delay to avoid rate limiting
-                if (batchSize < messageIds.length) {
-                    setTimeout(() => {
-                        processEmailBatch(messageIds.slice(batchSize));
-                    }, 1500); // 1.5s delay between batches to stay under 15k units/min
-                } else if (state.nextPageToken) {
-                    setTimeout(() => {
-                        loadNextPage();
-                    }, 1500); // 1.5s delay before next page
-                } else {
-                    updateUI();
-                    showLoading(false);
-                }
-            }).catch(error => {
-                console.error('Error processing email batch:', error);
-                
-                if (error.status === 403 && error.result && error.result.error && error.result.error.reason === 'rateLimitExceeded') {
-                    console.warn('Rate limit exceeded. Waiting before retrying...');
-                    setTimeout(() => {
-                        processEmailBatch(messageIds); // Retry current batch
-                    }, 2000);
-                } else {
-                    showLoading(false);
+                    state.token = response.access_token;
+                    state.expires = Date.now() + Math.max(0, Number(response.expires_in || 3600) - 60) * 1000;
+                    state.demo = false;
+                    signedIn(true);
+                    sync();
                 }
             });
+            for (const id of ['authorize_button', 'authorize_button_prompt']) $(id).disabled = false;
+            status('Ready to connect. Your mailbox data stays in this browser session.');
+        } catch {
+            status('Unable to initialize Google sign-in. Check config.js and reload.', 'danger');
         }
+    };
+    document.head.append(script);
+}
 
-        /**
-         * Process individual email
-         */
-        function processEmail(email) {
-            state.totalEmailsProcessed++;
-            
-            // Extract sender email
-            let sender = 'Unknown Sender';
-            const fromHeader = email.payload.headers.find(h => h.name === 'From');
-            if (fromHeader) {
-                const fromValue = fromHeader.value;
-                sender = fromValue.includes('<') ? 
-                    fromValue.substring(fromValue.indexOf('<') + 1, fromValue.indexOf('>')) : 
-                    fromValue;
+function setTheme(value) {
+    document.documentElement.dataset.bsTheme = value;
+    $('theme-toggle').innerHTML = value === 'dark'
+        ? '<i class="bi bi-sun" aria-hidden="true"></i>'
+        : '<i class="bi bi-moon" aria-hidden="true"></i>';
+    $('theme-toggle').setAttribute('aria-label', `Switch to ${value === 'dark' ? 'light' : 'dark'} theme`);
+}
+
+function init() {
+    signedIn(false);
+    for (const id of ['authorize_button', 'authorize_button_prompt']) {
+        $(id).disabled = true;
+        $(id).onclick = () => tokenClient?.requestAccessToken({ prompt: '' });
+    }
+    $('signout_button').onclick = signout;
+    $('demo-button').onclick = demo;
+    $('refresh-button').onclick = sync;
+    $('export-csv').onclick = exportCsv;
+    $('select-matching').onclick = () => {
+        for (const group of state.groups) state.selected.add(group.sender);
+        render();
+    };
+    $('stop-sync-btn').onclick = () => {
+        state.controller?.abort();
+        $('stop-sync-btn').disabled = true;
+    };
+    $('filter-type').onchange = () => {
+        state.page = 0;
+        state.selected.clear();
+        sync();
+    };
+    let searchTimer;
+    $('search-emails').oninput = () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            state.page = 0;
+            state.selected.clear();
+            render();
+        }, 150);
+    };
+    document.querySelectorAll('#categoryTab button').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.classList.contains('active')));
+        button.onclick = () => {
+            if (state.busy) return;
+            document.querySelectorAll('#categoryTab button').forEach(tab => {
+                tab.classList.toggle('active', tab === button);
+                tab.setAttribute('aria-pressed', String(tab === button));
+            });
+            state.category = button.dataset.category;
+            state.selected.clear();
+            state.page = 0;
+            sync();
+        };
+    });
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.tabIndex = 0;
+        const sort = () => {
+            state.direction = state.sort === th.dataset.sort ? -state.direction : -1;
+            state.sort = th.dataset.sort;
+            render();
+        };
+        th.onclick = sort;
+        th.onkeydown = event => {
+            if (['Enter', ' '].includes(event.key)) {
+                event.preventDefault();
+                sort();
             }
-            
-            // Store email data
-            state.allEmails.push({
-                id: email.id,
-                sender: sender,
-                labels: email.labelIds,
-                isUnread: email.labelIds.includes('UNREAD')
-            });
-            
-            // Group by sender
-            const existingGroup = state.emailGroups.find(g => g.sender === sender);
-            if (existingGroup) {
-                existingGroup.count++;
-                existingGroup.emailIds.push(email.id);
-                if (email.labelIds.includes('UNREAD')) {
-                    existingGroup.unreadCount++;
-                }
-            } else {
-                state.emailGroups.push({
-                    sender: sender,
-                    count: 1,
-                    unreadCount: email.labelIds.includes('UNREAD') ? 1 : 0,
-                    emailIds: [email.id]
-                });
-            }
-            
-            // Update UI periodically
-            if (state.totalEmailsProcessed % 10 === 0) {
-                updateUI();
-            }
+        };
+    });
+    $('select-all-groups').onchange = event => {
+        for (const group of state.groups.slice(state.page * pageSize, (state.page + 1) * pageSize)) {
+            event.target.checked ? state.selected.add(group.sender) : state.selected.delete(group.sender);
         }
+        render();
+    };
+    for (const [id, action] of [['mark-all-read', 'markRead'], ['archive-all', 'archive'], ['delete-all', 'trash']]) {
+        $(id).onclick = () => mutate(action, state.groups.filter(group => state.selected.has(group.sender)).flatMap(group => group.ids));
+    }
+    $('previous-page').onclick = () => {
+        state.page--;
+        render();
+    };
+    $('next-page').onclick = () => {
+        state.page++;
+        render();
+    };
 
-        /**
-         * Load next page of emails
-         */
-        function loadNextPage() {
-            let query = '';
-            switch (state.currentFilter) {
-                case 'unread': query = 'is:unread'; break;
-                case 'read': query = 'is:read'; break;
-                case 'starred': query = 'is:starred'; break;
-                case 'all': default: query = '';
-            }
+    let theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    try { theme = localStorage.getItem('theme') || theme; } catch { /* Storage can be blocked. */ }
+    setTheme(theme);
+    $('theme-toggle').onclick = () => {
+        const value = document.documentElement.dataset.bsTheme === 'dark' ? 'light' : 'dark';
+        setTheme(value);
+        try { localStorage.setItem('theme', value); } catch { /* Non-essential preference. */ }
+    };
 
-            const categoryMap = {
-                'CATEGORY_PERSONAL': 'category:primary',
-                'CATEGORY_PROMOTIONS': 'category:promotions',
-                'CATEGORY_SOCIAL': 'category:social',
-                'CATEGORY_UPDATES': 'category:updates'
-            };
-            const categoryQuery = categoryMap[state.currentCategory] || 'category:primary';
-            query = query ? `${query} ${categoryQuery}` : categoryQuery;
-
-            gapi.client.gmail.users.messages.list({
-                'userId': 'me',
-                'maxResults': 100,
-                'pageToken': state.nextPageToken,
-                'labelIds': ['INBOX'],
-                'q': query,
-                'includeSpamTrash': false
-            }).then(response => {
-                state.emailCount += response.result.messages ? response.result.messages.length : 0;
-                state.nextPageToken = response.result.nextPageToken || "";
-
-                if (response.result.messages && response.result.messages.length > 0) {
-                    processEmailBatch(response.result.messages);
-                } else {
-                    updateUI();
-                    showLoading(false);
-                }
-            }).catch(error => {
-                console.error('Error loading next page:', error);
-                
-                if (error.status === 403 && error.result && error.result.error && error.result.error.reason === 'rateLimitExceeded') {
-                    console.warn('Rate limit exceeded during list. Waiting before retrying...');
-                    setTimeout(() => {
-                        loadNextPage();
-                    }, 5000); // 5s delay on list retry
-                } else {
-                    showLoading(false);
-                }
-            });
+    window.addEventListener('beforeunload', event => {
+        if (state.busy) {
+            event.preventDefault();
+            event.returnValue = '';
         }
-
-        /**
-         * Toggle sort field and direction
-         */
-        function toggleSort(field) {
-            if (state.sortField === field) {
-                state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
-            } else {
-                state.sortField = field;
-                state.sortDirection = 'desc';
-            }
-
-            // Update sort indicators
-            document.querySelectorAll('th[data-sort]').forEach(th => {
-                th.querySelector('i').className = 'bi bi-arrow-down-up ms-1';
-                if (th.dataset.sort === state.sortField) {
-                    th.querySelector('i').className = state.sortDirection === 'asc' ?
-                        'bi bi-arrow-up ms-1' : 'bi bi-arrow-down ms-1';
-                }
-            });
-
-            updateUI();
+    });
+    window.addEventListener('offline', () => status('You are offline. Gmail actions require a connection; loaded data is session-only.', 'warning'));
+    window.addEventListener('online', () => status('Back online. Refresh if a sync or action was interrupted.'));
+    window.addEventListener('keydown', event => {
+        if (event.key === '/' && event.target === document.body) {
+            event.preventDefault();
+            $('search-emails').focus();
         }
+    });
 
-        /**
-         * Update the UI with current data
-         */
-        function updateUI() {
-            // Update stats
-            elements.totalEmails.textContent = state.allEmails.length.toLocaleString();
-            elements.unreadEmails.textContent = state.allEmails.filter(e => e.isUnread).length.toLocaleString();
-            elements.sendersCount.textContent = state.emailGroups.length.toLocaleString();
+    render();
+    initAuth();
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(() => { /* Optional shell caching. */ });
+    }
+}
 
-            // Filter and sort email groups
-            let filteredGroups = getFilteredGroups();
-
-            // Render email groups
-            if (filteredGroups.length === 0) {
-                elements.emptyState.style.display = 'block';
-                elements.emailsTableBody.innerHTML = '';
-            } else {
-                elements.emptyState.style.display = 'none';
-
-                let html = '';
-                filteredGroups.forEach((group, index) => {
-                    html += `
-                        <tr>
-                            <td>
-                                <input class="form-check-input group-checkbox" type="checkbox" data-index="${index}">
-                            </td>
-                            <td class="email-sender" title="${group.sender}">${group.sender}</td>
-                            <td>
-                                <span class="badge bg-primary rounded-pill">${group.count}</span>
-                                ${group.unreadCount > 0 ? `<span class="badge bg-warning rounded-pill ms-1">${group.unreadCount} unread</span>` : ''}
-                            </td>
-                            <td>
-                                <div class="action-buttons">
-                                    <button class="btn btn-sm btn-outline-primary action-btn" onclick="markEmailsAsRead(${index})">
-                                        <i class="bi bi-check-lg me-1"></i> Mark Read
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-primary action-btn" onclick="archiveEmails(${index})">
-                                        <i class="bi bi-archive me-1"></i> Archive
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger action-btn" onclick="deleteEmails(${index})">
-                                        <i class="bi bi-trash me-1"></i> Delete
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-warning action-btn" onclick="labelEmails(${index})">
-                                        <i class="bi bi-tag me-1"></i> Label
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                });
-
-                elements.emailsTableBody.innerHTML = html;
-                
-                const selectAllGroups = document.getElementById('select-all-groups');
-                if (selectAllGroups) {
-                    selectAllGroups.checked = false;
-                }
-            }
-        }
-
-        /**
-         * Handle filter change
-         */
-        function handleFilterChange() {
-            state.currentFilter = elements.filterType.value;
-            resetAppState();
-            loadEmails();
-        }
-
-        /**
-         * Handle search input
-         */
-        function handleSearchInput() {
-            state.searchQuery = elements.searchEmails.value;
-            updateUI();
-        }
-
-        /**
-         * Mark emails as read
-         */
-        function markEmailsAsRead(groupIndex) {
-            const filteredGroups = getFilteredGroups();
-            const group = filteredGroups[groupIndex];
-
-            Swal.fire({
-                title: `Mark ${group.count} emails from ${group.sender} as read?`,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Mark as Read',
-                cancelButtonText: 'Cancel',
-                reverseButtons: true,
-
-
-            }).then(result => {
-                if (result.isConfirmed) {
-                    showLoading(true);
-
-                    executeBatchModify(group.emailIds, {
-                        'removeLabelIds': ['UNREAD']
-                    }).then(() => {
-                        // Update local state
-                        group.emailIds.forEach(id => {
-                            const email = state.allEmails.find(e => e.id === id);
-                            if (email) email.isUnread = false;
-                        });
-
-                        // Update group unread count
-                        group.unreadCount = 0;
-
-                        updateUI();
-                        showLoading(false);
-                        Swal.fire({
-                            title: 'Success',
-                            text: 'Emails marked as read',
-                            icon: 'success',
-
-
-                        });
-                    }).catch(error => {
-                        console.error('Error marking emails as read:', error);
-                        showError('Failed to mark emails as read');
-                        showLoading(false);
-                    });
-                }
-            });
-        }
-
-        /**
-         * Archive emails
-         */
-        function archiveEmails(groupIndex) {
-            const filteredGroups = getFilteredGroups();
-            const group = filteredGroups[groupIndex];
-
-            Swal.fire({
-                title: `Archive ${group.count} emails from ${group.sender}?`,
-                text: 'Emails will be removed from your inbox but not deleted',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Archive',
-                cancelButtonText: 'Cancel',
-                reverseButtons: true,
-
-
-            }).then(result => {
-                if (result.isConfirmed) {
-                    showLoading(true);
-
-                    executeBatchModify(group.emailIds, {
-                        'removeLabelIds': ['INBOX']
-                    }).then(() => {
-                        // Remove from local state
-                        state.allEmails = state.allEmails.filter(e => !group.emailIds.includes(e.id));
-                        state.emailGroups = state.emailGroups.filter(g => g.sender !== group.sender);
-
-                        updateUI();
-                        showLoading(false);
-                        Swal.fire({
-                            title: 'Success',
-                            text: 'Emails archived',
-                            icon: 'success',
-
-
-                        });
-                    }).catch(error => {
-                        console.error('Error archiving emails:', error);
-                        showError('Failed to archive emails');
-                        showLoading(false);
-                    });
-                }
-            });
-        }
-
-        /**
-         * Delete emails
-         */
-        function deleteEmails(groupIndex) {
-            const filteredGroups = getFilteredGroups();
-            const group = filteredGroups[groupIndex];
-
-            Swal.fire({
-                title: `Delete ${group.count} emails from ${group.sender}?`,
-                text: 'This action cannot be undone',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                confirmButtonText: 'Delete',
-                cancelButtonText: 'Cancel',
-                reverseButtons: true,
-
-
-            }).then(result => {
-                if (result.isConfirmed) {
-                    showLoading(true);
-
-                    executeBatchModify(group.emailIds, {
-                        'addLabelIds': ['TRASH']
-                    }).then(() => {
-                        // Remove from local state
-                        state.allEmails = state.allEmails.filter(e => !group.emailIds.includes(e.id));
-                        state.emailGroups = state.emailGroups.filter(g => g.sender !== group.sender);
-
-                        updateUI();
-                        showLoading(false);
-                        Swal.fire({
-                            title: 'Deleted',
-                            text: 'Emails moved to trash',
-                            icon: 'success',
-
-
-                        });
-                    }).catch(error => {
-                        console.error('Error deleting emails:', error);
-                        showError('Failed to delete emails');
-                        showLoading(false);
-                    });
-                }
-            });
-        }
-
-        /**
-         * Add label to emails
-         */
-        function labelEmails(groupIndex) {
-            const filteredGroups = getFilteredGroups();
-            const group = filteredGroups[groupIndex];
-
-            // Create label options
-            const labelOptions = state.labels
-                .filter(label => !label.id.startsWith('CATEGORY_') && label.id !== 'TRASH' && label.id !== 'SPAM')
-                .map(label => `<option value="${label.id}">${label.name}</option>`)
-                .join('');
-
-            Swal.fire({
-                title: `Label ${group.count} emails from ${group.sender}`,
-                html: `
-                    <select id="label-select" class="form-select mt-3">
-                        <option value="" disabled selected>Choose a label</option>
-                        ${labelOptions}
-                    </select>
-                `,
-                showCancelButton: true,
-                confirmButtonText: 'Apply Label',
-                cancelButtonText: 'Cancel',
-                reverseButtons: true,
-
-
-                preConfirm: () => {
-                    const select = document.getElementById('label-select');
-                    return select.value;
-                }
-            }).then(result => {
-                if (result.isConfirmed && result.value) {
-                    showLoading(true);
-
-                    executeBatchModify(group.emailIds, {
-                        'addLabelIds': [result.value]
-                    }).then(() => {
-                        showLoading(false);
-                        Swal.fire({
-                            title: 'Success',
-                            text: 'Label applied to emails',
-                            icon: 'success',
-
-
-                        });
-                    }).catch(error => {
-                        console.error('Error applying label:', error);
-                        showError('Failed to apply label');
-                        showLoading(false);
-                    });
-                }
-            });
-        }
-
-        /**
-         * Handle bulk actions for selected emails
-         */
-        function handleBulkAction(action) {
-            const filteredGroups = getFilteredGroups();
-            const checkedBoxes = document.querySelectorAll('.group-checkbox:checked');
-
-            if (checkedBoxes.length === 0) {
-                Swal.fire({
-                    title: 'Info',
-                    text: 'Please select at least one sender to process',
-                    icon: 'info'
-                });
-                return;
-            }
-
-            let allIds = [];
-            checkedBoxes.forEach(cb => {
-                const index = parseInt(cb.dataset.index);
-                if (filteredGroups[index]) {
-                    allIds = allIds.concat(filteredGroups[index].emailIds);
-                }
-            });
-
-            let confirmMessage, successMessage, apiCall;
-
-            switch (action) {
-                case 'markRead':
-                    confirmMessage = `Mark ${allIds.length} selected emails as read?`;
-                    successMessage = 'Selected emails marked as read';
-                    apiCall = {
-                        removeLabelIds: ['UNREAD']
-                    };
-                    break;
-                case 'archive':
-                    confirmMessage = `Archive ${allIds.length} selected emails?`;
-                    successMessage = 'Selected emails archived';
-                    apiCall = {
-                        removeLabelIds: ['INBOX']
-                    };
-                    break;
-                case 'delete':
-                    confirmMessage = `Delete ${allIds.length} selected emails?`;
-                    successMessage = 'Selected emails moved to trash';
-                    apiCall = {
-                        addLabelIds: ['TRASH']
-                    };
-                    break;
-                default:
-                    return;
-            }
-
-            Swal.fire({
-                title: confirmMessage,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Yes, do it!',
-                cancelButtonText: 'Cancel'
-            }).then(result => {
-                if (result.isConfirmed) {
-                    showLoading(true);
-
-                    executeBatchModify(allIds, apiCall).then(() => {
-                        showLoading(false);
-                        Swal.fire({
-                            title: 'Success',
-                            text: successMessage,
-                            icon: 'success'
-                        });
-                        
-                        // Reload data to reflect changes
-                        loadLabels();
-                        loadEmails();
-                    }).catch(error => {
-                        console.error(`Error performing ${action}:`, error);
-                        showError(`Failed to complete action`);
-                        showLoading(false);
-                    });
-                }
-            });
-        }
-
-        /**
-         * Get filtered email groups based on current search query
-         */
-        function getFilteredGroups() {
-            let filteredGroups = state.emailGroups.filter(group =>
-                group.sender.toLowerCase().includes(state.searchQuery.toLowerCase())
-            );
-            
-            // Sort by current field and direction to match UI
-            filteredGroups.sort((a, b) => {
-                let comparison = 0;
-                if (state.sortField === 'sender') {
-                    comparison = a.sender.localeCompare(b.sender);
-                } else if (state.sortField === 'count') {
-                    comparison = a.count - b.count;
-                }
-                return state.sortDirection === 'asc' ? comparison : -comparison;
-            });
-            
-            return filteredGroups;
-        }
-
-        // Initialize the app when the page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            // Theme toggling
-            const themeToggle = document.getElementById('theme-toggle');
-            if (themeToggle) {
-                // Load saved theme
-                const savedTheme = localStorage.getItem('theme') || 'light';
-                document.documentElement.setAttribute('data-bs-theme', savedTheme);
-                themeToggle.innerHTML = savedTheme === 'dark' ? '<i class="bi bi-sun"></i>' : '<i class="bi bi-moon"></i>';
-                
-                // Toggle theme on click
-                themeToggle.addEventListener('click', () => {
-                    const currentTheme = document.documentElement.getAttribute('data-bs-theme');
-                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                    
-                    document.documentElement.setAttribute('data-bs-theme', newTheme);
-                    localStorage.setItem('theme', newTheme);
-                    themeToggle.innerHTML = newTheme === 'dark' ? '<i class="bi bi-sun"></i>' : '<i class="bi bi-moon"></i>';
-                });
-            }
-
-            // Load the Google API client library
-            const gapiScript = document.createElement('script');
-            gapiScript.src = 'https://apis.google.com/js/api.js';
-            gapiScript.async = true;
-            gapiScript.defer = true;
-            gapiScript.onload = function() {
-                console.log('Google API script loaded');
-                gapi.load('client', initializeGapiClient);
-            };
-            gapiScript.onerror = function() {
-                console.error('Failed to load Google API client');
-                showError('Failed to load required Google API libraries. Please check your internet connection.');
-            };
-            document.head.appendChild(gapiScript);
-
-            // Load Google Identity Services library
-            const gisScript = document.createElement('script');
-            gisScript.src = 'https://accounts.google.com/gsi/client';
-            gisScript.async = true;
-            gisScript.defer = true;
-            gisScript.onload = function() {
-                console.log('Google Identity Services script loaded');
-                initializeGisClient();
-            };
-            gisScript.onerror = function() {
-                console.error('Failed to load Google Identity Services');
-                showError('Failed to load authentication libraries. Please check your internet connection.');
-            };
-            document.head.appendChild(gisScript);
-
-            // Register Service Worker for PWA
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('./sw.js')
-                        .then(registration => {
-                            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                        })
-                        .catch(err => {
-                            console.log('ServiceWorker registration failed: ', err);
-                        });
-                });
-            }
-        });
+init();
