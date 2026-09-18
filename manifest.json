@@ -1,11 +1,13 @@
 {
   "name": "Gmail Manager Pro",
   "short_name": "Gmail Pro",
-  "description": "Efficiently manage, filter, and clean your Gmail inbox.",
+  "description": "Group and clean a Gmail inbox in the browser. Session-only metadata, no app server.",
+  "id": "./",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#121212",
+  "background_color": "#f6f8fc",
+  "theme_color": "#0b57d0",
   "icons": [
     {
       "src": "icons/Icon-192.png",

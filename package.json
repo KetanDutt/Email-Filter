@@ -1,0 +1,22 @@
+{
+  "name": "gmail-manager-pro",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Session-only, client-side Gmail inbox management",
+  "scripts": {
+    "start": "http-server . -a 0.0.0.0 -p 8000 -c-1",
+    "test": "node --test tests/*.test.js",
+    "test:e2e": "playwright test",
+    "check": "node --check app.js && node --check core.js && node --check sw.js",
+    "vendor": "node scripts/vendor.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.1",
+    "bootstrap": "5.3.3",
+    "bootstrap-icons": "1.11.3",
+    "http-server": "14.1.1"
+  }
+}
